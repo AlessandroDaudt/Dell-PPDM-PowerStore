@@ -1,0 +1,30 @@
+{
+  "storage_id": 11,
+  "ppdm_id": 4,
+  "host_ids": [2],
+  "brocade_ids": [3, 5],
+  "dry_run": true,
+  "volume": {
+    "resource_type": "POWERMAX_STORAGE_GROUP",
+    "name": "APP_ORACLE_SG",
+    "size_gib": 500,
+    "volume_count": 2,
+    "volume_prefix": "APP_ORACLE",
+    "srp_id": "SRP_1",
+    "slo_id": "Diamond",
+    "emulation": "FBA",
+    "powermax_port_group_id": "PG_PROD",
+    "masking_view_prefix": "APP_ORACLE_MV"
+  },
+  "zoning": {
+    "enabled": true,
+    "config_name": "SANFLOW_CFG",
+    "naming_template": "Z_{host}_{storage}_{fabric}",
+    "activate": true,
+    "peer_zoning": false
+  },
+  "backup": {
+    "mode": "EXISTING_POLICY",
+    "policy_id": "powermax-policy-id"
+  }
+}

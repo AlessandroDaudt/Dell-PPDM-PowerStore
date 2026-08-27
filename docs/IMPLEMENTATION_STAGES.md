@@ -1,27 +1,48 @@
-# Implementation stages
+# Etapas de implementacao
 
-The integrations were developed as a cumulative branch chain. Each branch starts at the previous stage, so the last branch includes every earlier capability.
+As branches de integracao sao cumulativas. Cada etapa mantem o fluxo anterior e adiciona um dominio.
 
-| Stage | Branch | Scope |
+| Etapa | Branch | Entrega |
 | --- | --- | --- |
-| 0 | `main` | Existing PowerStore individual-volume workflow |
-| 1 | `feature/powerstore-block` | PowerStore individual volumes and native block volume groups |
-| 2 | `feature/powermax-storage-groups` | PowerMax Storage Groups through Unisphere REST |
-| 3 | `feature/powerstore-nas` | PowerStore NAS file systems/shares and PPDM NAS Protection Engine workflow |
-| 4 | `feature/powerscale-nas` | PowerScale SMB/NFS shares through OneFS PAPI |
-| 5 | `feature/dell-unity-nas` | Dell Unity CIFS/NFS shares through Unisphere REST |
+| 0 | `main` | Volume individual PowerStore |
+| 1 | `feature/powerstore-block` | Volumes individuais e grupos de volumes block PowerStore |
+| 2 | `feature/powermax-storage-groups` | Storage Groups PowerMax, masking views para hosts e zoning Brocade |
+| 3 | `feature/powerstore-nas` | File systems/shares PowerStore NAS, publicacao e rotina PPDM NAS |
+| 4 | `feature/powerscale-nas` | Shares SMB/NFS PowerScale, publicacao e rotina PPDM NAS |
+| 5 | `feature/dell-unity-nas` | Shares CIFS/NFS Dell Unity, publicacao e rotina PPDM NAS |
 
-## Workflow behavior
+## Fluxo de backup de storage
 
-- Block `VOLUME` keeps the original host registration, FC zoning and PPDM flow.
-- PowerStore `VOLUME_GROUP` creates the group and its member volumes in the array, then uses the native group attach endpoint when available.
-- PowerMax `POWERMAX_STORAGE_GROUP` is hostless in this workflow. Set `zoning.enabled` to `false` and configure the array `symmetrix_id`; SRP, SLO, emulation and volume count are passed to Unisphere.
-- NAS `NAS_SHARE` and `NAS_DATA` do not use FC hosts or Brocade. They reconcile the share on the selected Dell NAS, discover it in PPDM and assign it to a centralized NAS policy.
-- A live NAS run assumes that the PPDM NAS asset source is enabled, NAS credentials are already registered, and a reachable NAS Protection Engine is deployed. SANFlow selects the engine in the policy payload; it does not deploy the VM or container engine.
+Para volumes block, a execucao segue esta ordem:
 
-## Validation
+1. validar hosts, WWPNs, fabrics, credenciais e capacidade;
+2. criar a LUN ou o grupo de volumes no array;
+3. apresentar a LUN aos hosts (mappings PowerStore ou masking view PowerMax);
+4. criar/ativar as zonas Brocade quando habilitado;
+5. criar ou reutilizar a rotina PPDM com Data Domain, interface, storage unit, agenda e retencao;
+6. confirmar o recurso e registrar IDs no workflow.
 
-From the repository root, the test suite can be run without a system Python installation by using `uv`:
+O PowerMax usa Storage Group + masking view. O Port Group precisa existir no array e pode ser
+informado no cadastro do PowerMax ou na solicitacao. Hosts inexistentes podem ser criados pela
+selecao `createHostParam`, usando os WWPNs cadastrados.
+
+## Fluxo NAS
+
+Para NAS, a execucao nao usa apresentacao de LUN nem zoning FC:
+
+1. validar o servidor NAS, protocolo, caminho e credenciais;
+2. criar ou reconciliar o share; em PowerStore `NAS_DATA` tambem cria o file system;
+3. publicar o share e confirmar a leitura dele no array;
+4. criar ou reutilizar a rotina PPDM NAS com o Data Domain selecionado, interface, storage unit,
+   agenda, retencao e NAS Protection Engine;
+5. aguardar a descoberta do asset no PPDM e associa-lo a politica.
+
+O Data Domain e o NAS Protection Engine sao obrigatorios ao criar uma politica NAS. A aplicacao
+configura a referencia na politica, mas nao instala nem provisiona o Protection Engine.
+
+## Validacao
+
+Na raiz do repositorio:
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path

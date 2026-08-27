@@ -108,3 +108,24 @@ class PowerStoreNASClient(PowerStoreClient):
             "protocol": protocol,
             "file_system": file_system,
         }
+
+    def publish_share(
+        self, share: dict[str, Any], options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Confirm that the created/reused share is published by the NAS service."""
+        options = options or share
+        share_id = share.get("id")
+        if not share_id:
+            raise ExternalAPIError(
+                "PowerStore NAS", "GET", "/api/rest/share", None, "share sem id para publicação"
+            )
+        published = self.get_share(str(share_id), options.get("nas_protocol", "NFS"))
+        if not published.get("id"):
+            raise ExternalAPIError(
+                "PowerStore NAS",
+                "GET",
+                f"/api/rest/share/{share_id}",
+                None,
+                "share não encontrado após a criação",
+            )
+        return {**published, "published": True}

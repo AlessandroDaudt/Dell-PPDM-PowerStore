@@ -42,4 +42,5 @@ def test_ppdm_creates_nas_policy_with_protection_engine():
 
     assert policy["id"] == "nas-policy-1"
     assert captured["body"]["assetType"] == "NAS"
+    assert captured["body"]["objectives"][0]["target"]["storageContainerId"] == "dd-1"
     assert captured["body"]["objectives"][0]["protectionEngineId"] == "engine-1"

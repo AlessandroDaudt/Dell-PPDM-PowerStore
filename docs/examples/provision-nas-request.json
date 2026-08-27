@@ -1,0 +1,35 @@
+{
+  "storage_id": 10,
+  "ppdm_id": 4,
+  "host_ids": [],
+  "brocade_ids": [],
+  "dry_run": true,
+  "volume": {
+    "resource_type": "NAS_SHARE",
+    "name": "financeiro",
+    "nas_protocol": "NFS",
+    "nas_path": "/data/financeiro",
+    "nas_server_id": "nas-server-1",
+    "nas_file_system_id": "filesystem-1"
+  },
+  "zoning": {
+    "enabled": false
+  },
+  "backup": {
+    "mode": "CREATE_POLICY",
+    "policy_name": "NAS_FINANCEIRO_DAILY",
+    "data_domain_id": "data-domain-1",
+    "data_domain_interface": "ddboost-interface-1",
+    "storage_unit_id": "mtree-1",
+    "nas_protection_engine_id": "nas-engine-1",
+    "frequency": "DAILY",
+    "start_time": "22:00:00",
+    "duration_hours": 8,
+    "retention_interval": 30,
+    "retention_unit": "DAY",
+    "retention_lock": false,
+    "backup_level": "SYNTHETIC_FULL",
+    "encrypted": true,
+    "data_consistency": "CRASH_CONSISTENT"
+  }
+}

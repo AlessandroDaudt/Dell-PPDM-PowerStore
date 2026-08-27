@@ -40,3 +40,17 @@ def test_powerstore_nas_reconciles_file_system_and_smb_share():
 
     assert result["id"] == "share-1"
     assert result["file_system"]["id"] == "fs-1"
+
+
+def test_powerstore_nas_publishes_share_after_creation():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/rest/smb_share/share-1":
+            return httpx.Response(200, json={"id": "share-1", "name": "FINANCE"})
+        return httpx.Response(404)
+
+    with PowerStoreNASClient("ps", "u", "p", transport=httpx.MockTransport(handler)) as client:
+        result = client.publish_share(
+            {"id": "share-1"}, {"nas_protocol": "SMB", "nas_path": "/finance"}
+        )
+
+    assert result["published"] is True

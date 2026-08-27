@@ -100,6 +100,7 @@ stateDiagram-v2
 - Creation of PPDM v2 or v3 policies, or assignment to an existing policy.
 - Native PowerStore individual-volume and block-volume-group provisioning, including group mapping when supported by PowerStoreOS.
 - Native PowerMax Storage Group provisioning through Unisphere REST, with array, SRP, SLO and volume-count parameters.
+- PowerMax Storage Group presentation to the selected hosts through native masking views that bind the Storage Group, Port Group and host initiators; optional Brocade zoning remains part of the block flow.
 - PowerStore NAS file-system and share discovery/reconciliation, with PPDM NAS policy assignment through a selected Protection Engine.
 - PowerScale SMB/NFS share discovery and reconciliation through OneFS PAPI, with the same PPDM NAS Protection Engine workflow.
 - Dell Unity CIFS/NFS share discovery and reconciliation through Unisphere REST, with CSRF protection and the same PPDM NAS Protection Engine workflow.
@@ -144,12 +145,12 @@ docker compose up --build -d
 
 Open `http://localhost:8080`. Service health is available at `GET /health`.
 
-1. Register PowerStore block or PowerStore NAS and its target WWPNs per fabric when block zoning is required.
-2. Register each physical host and its initiator WWPNs per fabric.
-3. Register the principal switch for each fabric. Provide FID, FOS generation and active cfg.
-4. Register PPDM.
-5. Use **Test** in the inventory and run the first provisioning in dry-run mode.
-6. Review all six steps; only then run a live change window.
+1. Register the selected PowerStore, PowerMax, PowerScale or Unity endpoint. For NAS, register the NAS appliance; for block, register target WWPNs per fabric.
+2. For block resources, register each physical host with initiator WWPNs and the principal Brocade switch for each fabric. PowerMax also needs a Symmetrix ID and an existing Port Group.
+3. Register PPDM and, for a new NAS policy, select a Data Domain and NAS Protection Engine after synchronization.
+4. Use **Test** in the inventory and run the first provisioning in dry-run mode.
+5. Review all six steps: NAS share creation/publication or block LUN presentation/zoning, followed by PPDM protection.
+6. Only then run a live change window.
 
 See the detailed runbook in [docs/OPERATIONS.md](docs/OPERATIONS.md).
 

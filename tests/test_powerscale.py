@@ -30,3 +30,19 @@ def test_powerscale_lists_and_reconciles_nfs_export():
 
     assert result["id"] == "export-1"
     assert result["protocol"] == "NFS"
+
+
+def test_powerscale_publishes_share_after_creation():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/platform/3/protocols/nfs/exports/export-1":
+            return httpx.Response(200, json={"id": "export-1", "name": "finance"})
+        return httpx.Response(404)
+
+    with PowerScaleClient(
+        "powerscale", "api-user", "secret", transport=httpx.MockTransport(handler)
+    ) as client:
+        result = client.publish_share(
+            {"id": "export-1"}, {"nas_protocol": "NFS", "nas_path": "/ifs/data/finance"}
+        )
+
+    assert result["published"] is True

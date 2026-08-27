@@ -161,15 +161,12 @@ function updateResourceType() {
   $("#groupName").required = group;
   $("#groupMembers").required = group;
   $("#nasPath").required = nas;
-  const hostless = powermax || nas;
+  const hostless = nas;
   $("#zoningEnabled").checked = !hostless;
   $("#zoningEnabled").disabled = hostless;
   $("#zoningEnabled").closest(".inline-options").classList.toggle("disabled-section", hostless);
   $("#hostChoices").closest(".selection-columns").classList.toggle("disabled-section", hostless);
-  if (powermax && $("#backupMode").value !== "NONE") {
-    $("#backupMode").value = "NONE";
-    updateBackupMode();
-  } else if (nas && $("#backupMode").value === "NONE") {
+  if (nas && $("#backupMode").value === "NONE") {
     $("#backupMode").value = "EXISTING_POLICY";
     updateBackupMode();
   }
@@ -178,7 +175,7 @@ function updateResourceType() {
 function updateStorageResourceDefaults() {
   const selected = $("#storageId").selectedOptions[0];
   if (selected?.dataset.type === "POWERMAX") $("#resourceType").value = "POWERMAX_STORAGE_GROUP";
-  else if (["POWERSTORE_NAS", "POWERSCALE"].includes(selected?.dataset.type)) $("#resourceType").value = "NAS_SHARE";
+  else if (["POWERSTORE_NAS", "POWERSCALE", "UNITY"].includes(selected?.dataset.type)) $("#resourceType").value = "NAS_SHARE";
   else if (["POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value)) $("#resourceType").value = "VOLUME";
   updateResourceType();
 }
@@ -222,12 +219,14 @@ function openEquipment(item = null) {
     $("#equipmentFos").value = item.settings.fos_generation || "9.1";
     $("#equipmentOs").value = item.settings.os_type || "Linux";
     $("#equipmentHostId").value = item.settings.powerstore_host_id || "";
+    $("#equipmentPowermaxHostId").value = item.settings.powermax_host_id || "";
     $("#equipmentSymmetrixId").value = item.settings.symmetrix_id || "";
     $("#equipmentApiVersion").value = item.settings.api_version || "100";
     $("#equipmentDefaultSrp").value = item.settings.default_srp_id || "";
     $("#equipmentDefaultSlo").value = item.settings.default_slo_id || "";
     $("#equipmentOnefsApiVersion").value = item.settings.api_version || "3";
     $("#equipmentUnityApiVersion").value = item.settings.api_version || "5.2";
+    $("#equipmentDefaultPortGroup").value = item.settings.default_port_group_id || "";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -235,7 +234,7 @@ function openEquipment(item = null) {
 }
 
 function parseWwns(type) {
-  const defaultRole = type === "POWERSTORE" ? "TARGET" : type === "BROCADE" ? "SWITCH" : "INITIATOR";
+  const defaultRole = ["POWERSTORE", "POWERMAX"].includes(type) ? "TARGET" : type === "BROCADE" ? "SWITCH" : "INITIATOR";
   return $("#equipmentWwns").value.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
     const [value, label = "", fabric = "A", role = defaultRole] = line.split(",").map((item) => item.trim());
     return { value, label, fabric: fabric.toUpperCase(), role: role.toUpperCase() };
@@ -248,11 +247,12 @@ async function saveEquipment(event) {
   const settings = type === "BROCADE" ? {
     fabric: $("#equipmentFabric").value.toUpperCase(), fid: Number($("#equipmentFid").value),
     active_config: $("#equipmentActiveConfig").value, fos_generation: $("#equipmentFos").value,
-  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null } : type === "POWERMAX" ? {
+  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null, powermax_host_id: $("#equipmentPowermaxHostId").value || null } : type === "POWERMAX" ? {
     symmetrix_id: $("#equipmentSymmetrixId").value || null,
     api_version: $("#equipmentApiVersion").value || "100",
     default_srp_id: $("#equipmentDefaultSrp").value || null,
     default_slo_id: $("#equipmentDefaultSlo").value || null,
+    default_port_group_id: $("#equipmentDefaultPortGroup").value || null,
   } : type === "POWERSCALE" ? {
     api_version: $("#equipmentOnefsApiVersion").value || "3",
   } : type === "UNITY" ? {
@@ -296,13 +296,20 @@ async function syncPowerStore() {
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Sincronizando…";
   try {
     const type = $("#storageId").selectedOptions[0]?.dataset.type;
-    const endpoint = type === "POWERSCALE" ? "powerscale" : type === "UNITY" ? "unity" : "powerstore";
+    const endpoint = type === "POWERMAX"
+      ? "powermax"
+      : type === "POWERSCALE"
+        ? "powerscale"
+        : type === "UNITY"
+          ? "unity"
+          : "powerstore";
     state.powerstoreOptions = await api(`/api/integrations/${endpoint}/${id}/options`);
     fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
     fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");
     fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "Sem política local");
     fillSelect("#nasServerId", state.powerstoreOptions.nas_servers, (item) => item.name || item.id, "Automático");
     fillSelect("#nasFileSystemId", state.powerstoreOptions.file_systems, (item) => item.name || item.id, "Automático");
+    fillSelect("#powermaxPortGroup", state.powerstoreOptions.port_groups, (item) => item.name || item.id, "Informe no cadastro do PowerMax");
     toast("Opções do PowerStore atualizadas em tempo real.");
   } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; button.textContent = "↻ Sincronizar opções"; }
@@ -431,6 +438,8 @@ async function submitProvision(event) {
       nas_file_system_id: resourceType.startsWith("NAS_") ? $("#nasFileSystemId").value || null : null,
       appliance_id: $("#applianceId").value || null, performance_policy_id: $("#performancePolicy").value || null,
       protection_policy_id: $("#localProtectionPolicy").value || null, logical_unit_number: $("#lunNumber").value ? Number($("#lunNumber").value) : null,
+      powermax_port_group_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxPortGroup").value || null : null,
+      masking_view_prefix: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxMaskingViewPrefix").value || null : null,
     },
     zoning: { enabled: $("#zoningEnabled").checked, config_name: $("#zoneConfig").value, naming_template: $("#zoneTemplate").value, activate: $("#activateConfig").checked, peer_zoning: $("#peerZoning").checked },
     backup: {
@@ -473,6 +482,15 @@ async function openWorkflow(id) {
     const workflow = await api(`/api/workflows/${id}`);
     $("#workflowDialogTitle").textContent = `Workflow #${workflow.id} · ${workflow.request.volume?.name || "LUN"}`;
     $("#workflowDetail").innerHTML = `${workflow.error ? `<div class="error-box">${escapeHtml(workflow.error)}</div>` : ""}<div class="timeline">${workflow.steps.map((step) => `<article class="timeline-step"><i class="timeline-dot ${step.status}"></i><div><h4>${escapeHtml(step.name)} · ${escapeHtml(step.status)}</h4><p>${escapeHtml(step.message || "Aguardando execução")}</p></div></article>`).join("")}</div>`;
+    $$(".timeline-step").forEach((element, index) => {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Technical details";
+      const output = document.createElement("pre");
+      output.textContent = JSON.stringify(workflow.steps[index].details || {}, null, 2);
+      details.append(summary, output);
+      element.querySelector("div")?.append(details);
+    });
     $("#workflowDialog").showModal();
   } catch (error) { toast(error.message, true); }
 }

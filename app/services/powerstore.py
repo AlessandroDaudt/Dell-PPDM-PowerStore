@@ -142,7 +142,8 @@ class PowerStoreClient:
 
     def get_volume_group(self, group_id: str) -> dict[str, Any]:
         data = self.request(
-            "GET", f"/api/rest/volume_group/{group_id}",
+            "GET",
+            f"/api/rest/volume_group/{group_id}",
             params={"select": "id,name,description,volumes,type"},
         )
         return data if isinstance(data, dict) else {}
@@ -158,7 +159,10 @@ class PowerStoreClient:
             group_payload["protection_policy_id"] = options["protection_policy_id"]
         created = self._require_id(
             self.request("POST", "/api/rest/volume_group", json=group_payload),
-            "PowerStore", "POST", "/api/rest/volume_group", "grupo de volumes",
+            "PowerStore",
+            "POST",
+            "/api/rest/volume_group",
+            "grupo de volumes",
         )
         members: list[dict[str, Any]] = []
         for member in options.get("members", []):
@@ -217,9 +221,7 @@ class PowerStoreClient:
         payload = {
             "name": name,
             "os_type": os_type,
-            "initiators": [
-                {"port_name": wwn, "port_type": "FC"} for wwn in initiator_wwns
-            ],
+            "initiators": [{"port_name": wwn, "port_type": "FC"} for wwn in initiator_wwns],
         }
         created = self.request("POST", "/api/rest/host", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
@@ -238,11 +240,7 @@ class PowerStoreClient:
         self.request(
             "PATCH",
             f"/api/rest/host/{host['id']}",
-            json={
-                "add_initiators": [
-                    {"port_name": item, "port_type": "FC"} for item in missing
-                ]
-            },
+            json={"add_initiators": [{"port_name": item, "port_type": "FC"} for item in missing]},
         )
         host["host_initiators"] = host.get("host_initiators", []) + [
             {"port_name": item, "port_type": "FC"} for item in missing

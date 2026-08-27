@@ -5,6 +5,7 @@
   "brocade_ids": [3, 5],
   "dry_run": true,
   "volume": {
+    "resource_type": "VOLUME",
     "name": "PRD_ORACLE_001",
     "size_gib": 500,
     "description": "Production database",

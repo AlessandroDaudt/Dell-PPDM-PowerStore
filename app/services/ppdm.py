@@ -138,9 +138,15 @@ class PPDMClient:
             self.request(
                 "GET",
                 f"/api/{api}/protection-policies",
-                params={"filter": 'assetType eq "POWERSTORE_BLOCK"', "pageSize": 500},
+                params={"pageSize": 500},
             )
         )
+        policies = [
+            item
+            for item in policies
+            if not item.get("assetType")
+            or str(item.get("assetType")).upper() in {"POWERSTORE_BLOCK", "POWERMAX_BLOCK"}
+        ]
         mtrees = self._content(
             self.request("GET", "/api/v2/datadomain-mtrees", params={"pageSize": 500})
         )
@@ -169,6 +175,11 @@ class PPDMClient:
         data_domains = self._content(
             self.request("GET", "/api/v2/storage-systems", params={"pageSize": 500})
         )
+        data_domains = [
+            item
+            for item in data_domains
+            if str(item.get("type", "DATA_DOMAIN_SYSTEM")).upper() == "DATA_DOMAIN_SYSTEM"
+        ]
         storage_units = self._content(
             self.request("GET", "/api/v2/datadomain-mtrees", params={"pageSize": 500})
         )
@@ -219,7 +230,7 @@ class PPDMClient:
         if v3:
             payload: dict[str, Any] = {
                 "name": options["policy_name"],
-                "assetType": "POWERSTORE_BLOCK",
+                "assetType": options.get("asset_type", "POWERSTORE_BLOCK"),
                 "disabled": False,
                 "purpose": "CENTRALIZED",
                 "objectives": [
@@ -264,7 +275,7 @@ class PPDMClient:
         else:
             payload = {
                 "name": options["policy_name"],
-                "assetType": "POWERSTORE_BLOCK",
+                "assetType": options.get("asset_type", "POWERSTORE_BLOCK"),
                 "type": "ACTIVE",
                 "encrypted": options["encrypted"],
                 "enabled": True,
@@ -313,6 +324,10 @@ class PPDMClient:
 
     def create_nas_policy(self, options: dict[str, Any]) -> dict[str, Any]:
         """Create a centralized NAS policy that uses a NAS Protection Engine."""
+        if not options.get("data_domain_id"):
+            raise ValueError("data_domain_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
+        if not options.get("nas_protection_engine_id"):
+            raise ValueError("nas_protection_engine_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
         version = self.get_version()
         v3 = self.uses_v3(version)
         schedule = self._schedule(options, v3)
@@ -340,11 +355,9 @@ class PPDMClient:
                         "id": str(uuid.uuid4()),
                         "time": [
                             {
-                                "type": (
-                                    "RETENTION_AND_LOCK"
-                                    if options["retention_lock"]
-                                    else "RETENTION"
-                                ),
+                                "type": "RETENTION_AND_LOCK"
+                                if options["retention_lock"]
+                                else "RETENTION",
                                 "unitValue": options["retention_interval"],
                                 "unitType": options["retention_unit"],
                             }
@@ -452,9 +465,44 @@ class PPDMClient:
                 return asset
             if time.monotonic() >= deadline:
                 raise ExternalAPIError(
-                    "PPDM", "GET", "/api/v2/assets", None,
-                    f"share NAS {path or name} não apareceu no inventário em {timeout}s; "
-                    "confirme a origem NAS e a implantação do NAS Protection Engine",
+                    "PPDM",
+                    "GET",
+                    "/api/v2/assets",
+                    None,
+                    f"NAS share {path or name} nao apareceu no inventario em {timeout}s; "
+                    "confirme a descoberta do NAS no PPDM e o NAS Protection Engine",
+                )
+            time.sleep(interval)
+
+    def find_block_asset(self, name: str) -> dict[str, Any] | None:
+        """Find a discovered block asset without assuming the array vendor subtype."""
+        data = self.request(
+            "GET",
+            "/api/v2/assets",
+            params={"filter": f'name eq "{name}"', "pageSize": 500},
+        )
+        assets = self._content(data)
+        for asset in assets:
+            if str(asset.get("name", "")) == name:
+                return asset
+        return assets[0] if len(assets) == 1 else None
+
+    def wait_for_block_asset(
+        self, name: str, timeout: int = 180, interval: int = 10
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        while True:
+            asset = self.find_block_asset(name)
+            if asset:
+                return asset
+            if time.monotonic() >= deadline:
+                raise ExternalAPIError(
+                    "PPDM",
+                    "GET",
+                    "/api/v2/assets",
+                    None,
+                    f"volume {name} nao apareceu no inventario em {timeout}s; "
+                    "execute a descoberta do storage no PPDM",
                 )
             time.sleep(interval)
 
