@@ -23,9 +23,15 @@ Research performed in August 2026. The documentation embedded in each appliance 
 - [Fabric OS downloads and documentation](https://knowledge.broadcom.com/external/article/267270/fos-fabric-os-downloads-and-documentatio.html) — release-specific documentation.
 - [Fabric OS 8.2.3 release notes](https://docs.broadcom.com/doc/FOS-823f-RN) — official REST and YANG support.
 
+## Cisco MDS NX-API
+
+- [Cisco MDS 9000 Series NX-API Zoning Reference](https://developer.cisco.com/cisco-mds-9000-series-nx-api-reference/latest/zoning/) — official `cli_show_ascii` and `cli_conf` zoning examples for zones, zonesets and activation.
+- [Cisco MDS NX-OS Programmability Guide](https://www.cisco.com/c/en/us/td/docs/dcn/mds9000/sw/9x/programmability/cisco-mds-9000-nx-os-programmability-guide-9x/nx_api.html) — NX-API endpoint, payload and transport configuration.
+
 ## Derived decisions
 
 - Keep a persistent PowerStore session and obtain CSRF before every mutation.
 - Always log in to PPDM through v2; select the policy endpoint (v2 or v3) from the node version.
 - Retrieve DDs from `/api/v2/storage-systems` and storage units from `/api/v2/datadomain-mtrees`.
 - Zone WWPN members within the same fabric, preserve cfg entries and obtain a checksum before save/activation.
+- Use the Cisco MDS `/ins` endpoint with JSON `ins_api` payloads; read the current VSAN state before sending `cli_conf` changes and activate a zoneset only when requested.

@@ -2,7 +2,7 @@
 
 ## Credentials
 
-Appliance passwords are encrypted before they are stored in SQLite. The Fernet key is derived from `APP_SECRET_KEY`, which must be supplied by a secret manager or a protected `.env` file. PowerStore, PPDM and Brocade tokens exist only in memory during a call.
+Appliance passwords are encrypted before they are stored in SQLite. The Fernet key is derived from `APP_SECRET_KEY`, which must be supplied by a secret manager or a protected `.env` file. PowerStore, PPDM and Brocade/Cisco MDS credentials or tokens exist only in memory during a call.
 
 The Ansible inventory is created in a temporary directory, contains only the required credentials and is removed at the end. Sensitive tasks use `no_log: true`.
 

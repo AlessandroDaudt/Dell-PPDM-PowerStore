@@ -20,6 +20,7 @@ from app.schemas import (
     WorkflowStepRead,
     WWNRead,
 )
+from app.services.cisco_mds import CiscoMDSClient
 from app.services.orchestrator import create_workflow, equipment_settings, run_workflow
 from app.services.powermax import PowerMaxClient
 from app.services.powerscale import PowerScaleClient
@@ -299,6 +300,17 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
             password,
             equipment.api_port,
             equipment.verify_ssl,
+        ) as client:
+            return client.test_connection()
+    if equipment.type == "CISCO_MDS":
+        settings = equipment_settings(equipment)
+        with CiscoMDSClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            password,
+            equipment.api_port,
+            equipment.verify_ssl,
+            settings.get("api_version", "1.2"),
         ) as client:
             return client.test_connection()
     if equipment.type == "BROCADE":

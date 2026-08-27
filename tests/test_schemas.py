@@ -1,7 +1,13 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import BackupOptions, ProvisionRequest, VolumeOptions, normalize_wwn
+from app.schemas import (
+    BackupOptions,
+    EquipmentCreate,
+    ProvisionRequest,
+    VolumeOptions,
+    normalize_wwn,
+)
 
 
 def test_normalize_wwn_accepts_common_formats():
@@ -147,3 +153,27 @@ def test_nas_policy_requires_protection_engine_when_created():
                 },
             }
         )
+
+
+def test_cisco_mds_fabric_is_valid_for_block_zoning():
+    equipment = EquipmentCreate(
+        name="MDS-A",
+        type="CISCO_MDS",
+        management_address="mds-a.example.com",
+        username="automation",
+        password="secret",
+        settings={"api_version": "1.2", "default_vsan": 10},
+    )
+    request = ProvisionRequest.model_validate(
+        {
+            "storage_id": 1,
+            "host_ids": [2],
+            "fabric_ids": [3],
+            "volume": {"name": "VOL_01", "size_gib": 10},
+            "zoning": {"enabled": True, "vsan_id": 10},
+            "backup": {"mode": "NONE"},
+        }
+    )
+
+    assert equipment.type == "CISCO_MDS"
+    assert request.fabric_ids == [3]

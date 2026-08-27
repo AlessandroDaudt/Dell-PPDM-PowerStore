@@ -1,0 +1,23 @@
+{
+  "storage_id": 1,
+  "host_ids": [2],
+  "fabric_ids": [6],
+  "dry_run": true,
+  "volume": {
+    "resource_type": "VOLUME",
+    "name": "PRD_CISCO_MDS_001",
+    "size_gib": 500,
+    "description": "Production block volume"
+  },
+  "zoning": {
+    "enabled": true,
+    "config_name": "SANFLOW_CFG",
+    "naming_template": "Z_{host}_{storage}_{fabric}",
+    "activate": true,
+    "peer_zoning": false,
+    "vsan_id": 10
+  },
+  "backup": {
+    "mode": "NONE"
+  }
+}

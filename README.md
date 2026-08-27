@@ -1,8 +1,8 @@
 # SANFlow Dell
 
-Web control plane for automating, in one workflow, Dell PowerStore volumes or block volume groups, presentation to physical hosts, Fibre Channel zoning on Brocade switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
+Web control plane for automating, in one workflow, Dell PowerStore volumes or block volume groups, presentation to physical hosts, Fibre Channel zoning on Brocade or Cisco MDS switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
 
-> Status: initial release ready for lab and acceptance testing. **Dry-run is the default.** Before the first production use, validate the exact PowerStoreOS, PPDM and Fabric OS versions in E-Lab Navigator and run a controlled change.
+> Status: initial release ready for lab and acceptance testing. **Dry-run is the default.** Before the first production use, validate the exact PowerStoreOS, PPDM, Fabric OS and Cisco NX-OS versions in the vendor documentation and run a controlled change.
 
 ## End-to-end flow
 
@@ -10,7 +10,7 @@ Web control plane for automating, in one workflow, Dell PowerStore volumes or bl
 flowchart LR
     A[1. Validate inventory<br/>WWNs · fabrics · credentials] --> B[2. PowerStore REST<br/>create volume]
     B --> C[3. PowerStore REST<br/>register host and map LUN]
-    C --> D[4. Ansible + FOS REST<br/>create zones and activate cfg]
+    C --> D[4. Fibre Channel adapter<br/>Brocade FOS or Cisco MDS NX-API<br/>create zones and activate cfg]
     D --> E[5. PPDM REST<br/>discover asset]
     E --> F[6. PPDM REST<br/>assign policy]
     F --> G[Data Domain<br/>backup · retention · replication]
@@ -27,7 +27,7 @@ sequenceDiagram
     actor O as Operator
     participant S as SANFlow
     participant P as PowerStore
-    participant B as Brocade FOS
+    participant B as Brocade FOS / Cisco MDS NX-API
     participant M as PPDM
     participant D as Data Domain
 
@@ -40,10 +40,15 @@ sequenceDiagram
         S->>P: GET/POST /api/rest/host
         S->>P: POST /api/rest/host/{id}/attach
     end
-    S->>B: ansible-playbook
-    B->>B: POST /rest/login
-    B->>B: POST zone + PATCH cfg
-    B->>B: PATCH effective-configuration with checksum
+    alt Brocade fabric
+        S->>B: ansible-playbook
+        B->>B: FOS REST login and reconcile zone/cfg
+        B->>B: Save or activate with ZoneDB checksum
+    else Cisco MDS fabric
+        S->>B: POST /ins (cli_show_ascii / cli_conf)
+        B->>B: Reconcile zone and zoneset in VSAN
+        B->>B: Activate zoneset when requested
+    end
     S->>M: POST /api/v2/login
     S->>M: GET /api/v2/assets (wait for discovery)
     alt Existing policy
@@ -56,21 +61,25 @@ sequenceDiagram
     S-->>O: Per-step result and technical IDs
 ```
 
-### Brocade zoning flow
+### Fibre Channel zoning flow
 
 ```mermaid
 flowchart TD
-    L[FOS REST login] --> R[GET defined-configuration]
-    R --> X{Zone already exists?}
-    X -- no --> Z[POST new zone<br/>initiators + targets in the same fabric]
-    X -- yes --> C[Preserve existing zone]
-    Z --> M[Merge zone into selected cfg]
-    C --> M
-    M --> K[GET ZoneDB checksum]
-    K --> S[Save transaction<br/>FOS 9.1 or 9.2+]
-    S --> A{Activate cfg?}
-    A -- yes --> E[PATCH effective-configuration]
-    A -- no --> O[Logout]
+    L[Selected Fibre Channel switch] --> T{Fabric type}
+    T -- Brocade --> B[FOS REST login]
+    T -- Cisco MDS --> C[NX-API POST /ins]
+    B --> R[Read current zoning]
+    C --> Q[Read zones and zoneset in VSAN]
+    R --> X{Zone and cfg need changes?}
+    Q --> Y{Zone and zoneset need changes?}
+    X -- no --> O[Keep current configuration]
+    Y -- no --> O
+    X -- yes --> Z[Reconcile zone, cfg and checksum]
+    Y -- yes --> N[Reconcile zone and zoneset]
+    Z --> A{Activate cfg?}
+    N --> A
+    A -- yes --> E[Activate effective cfg / zoneset]
+    A -- no --> O
     E --> O
 ```
 
@@ -93,14 +102,15 @@ stateDiagram-v2
 
 ## What the interface provides
 
-- Registration of PowerStore, PPDM, Brocade switches and physical hosts.
+- Registration of PowerStore, PPDM, Brocade or Cisco MDS switches and physical hosts.
 - Multiple WWPNs per equipment entry, separated by fabric and function (`INITIATOR`, `TARGET` or `SWITCH`).
 - Live retrieval of PowerStore appliances and policies.
 - Live retrieval of PPDM versions, Data Domains, preferred interfaces, storage units and PowerStore policies.
 - Creation of PPDM v2 or v3 policies, or assignment to an existing policy.
 - Native PowerStore individual-volume and block-volume-group provisioning, including group mapping when supported by PowerStoreOS.
 - Native PowerMax Storage Group provisioning through Unisphere REST, with array, SRP, SLO and volume-count parameters.
-- PowerMax Storage Group presentation to the selected hosts through native masking views that bind the Storage Group, Port Group and host initiators; optional Brocade zoning remains part of the block flow.
+- PowerMax Storage Group presentation to the selected hosts through native masking views that bind the Storage Group, Port Group and host initiators; optional Brocade or Cisco MDS zoning remains part of the block flow.
+- Fibre Channel zoning through the selected adapter: Brocade FOS via Ansible or Cisco MDS through NX-API, with VSAN/zoneset reconciliation and optional activation.
 - PowerStore NAS file-system and share discovery/reconciliation, with PPDM NAS policy assignment through a selected Protection Engine.
 - PowerScale SMB/NFS share discovery and reconciliation through OneFS PAPI, with the same PPDM NAS Protection Engine workflow.
 - Dell Unity CIFS/NFS share discovery and reconciliation through Unisphere REST, with CSRF protection and the same PPDM NAS Protection Engine workflow.
@@ -120,6 +130,7 @@ flowchart TB
     ORCH --> PPC[PPDM client<br/>Bearer token · v2/v3]
     ORCH --> ANS[ansible-playbook]
     ANS --> FOS[Brocade Fabric OS REST/YANG]
+    ORCH --> MDS[Cisco MDS NX-API /ins]
     PSC --> PS[PowerStore]
     PPC --> PPDM[PowerProtect Data Manager]
     PPDM --> DD[PowerProtect DD]
@@ -130,7 +141,7 @@ flowchart TB
 | FastAPI | authentication, inventory, live options, workflows and audit events |
 | SQLite | inventory, WWNs, execution state and events; persisted in a Docker volume |
 | REST clients | sessions, tokens, timeouts, HTTP validation and PPDM v2/v3 compatibility |
-| Ansible | idempotent zoning per fabric using only FOS REST calls |
+| Ansible / NX-API | idempotent zoning per fabric using Brocade FOS REST or Cisco MDS `/ins` |
 | SPA | registration, provisioning, backup selection and operational tracking |
 
 ## Quick start with Docker
@@ -146,13 +157,17 @@ docker compose up --build -d
 Open `http://localhost:8080`. Service health is available at `GET /health`.
 
 1. Register the selected PowerStore, PowerMax, PowerScale or Unity endpoint. For NAS, register the NAS appliance; for block, register target WWPNs per fabric.
-2. For block resources, register each physical host with initiator WWPNs and the principal Brocade switch for each fabric. PowerMax also needs a Symmetrix ID and an existing Port Group.
+2. For block resources, register each physical host with initiator WWPNs and the principal Brocade or Cisco MDS switch for each fabric. PowerMax also needs a Symmetrix ID and an existing Port Group.
 3. Register PPDM and, for a new NAS policy, select a Data Domain and NAS Protection Engine after synchronization.
 4. Use **Test** in the inventory and run the first provisioning in dry-run mode.
 5. Review all six steps: NAS share creation/publication or block LUN presentation/zoning, followed by PPDM protection.
 6. Only then run a live change window.
 
 See the detailed runbook in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
+### Cisco MDS Fibre Channel
+
+Register one Cisco MDS endpoint per fabric with NX-API enabled over HTTPS. Set the NX-API version (normally `1.2`), the default VSAN and zoneset. The block workflow reads the current zones/zoneset through `cli_show_ascii`, then reconciles and optionally activates the zoneset through `cli_conf`. Peer zoning is currently supported only on Brocade.
 
 ## Repository layout
 
@@ -163,7 +178,8 @@ app/
   services/
     powerstore.py           PowerStore REST client
     ppdm.py                 PPDM v2/v3 REST client
-    ansible_runner.py       controlled playbook execution
+    ansible_runner.py       controlled Brocade playbook execution
+    cisco_mds.py            Cisco MDS NX-API zoning client
     orchestrator.py         provisioning state machine
   static/                   web interface
 playbooks/
@@ -178,7 +194,8 @@ tests/                      unit tests with mocked APIs
 - Do not change `APP_SECRET_KEY` without planning credential re-encryption first.
 - Keep `verify_ssl=true` and install trusted certificates on the appliances. Disabling validation is intended only for controlled labs.
 - Use dedicated accounts with the minimum privileges required by the endpoints.
-- One principal switch per fabric is sufficient; the ZoneDB is distributed across the fabric.
+- One principal switch per fabric is sufficient; the ZoneDB is distributed across the fabric. Cisco MDS uses one configured NX-API endpoint per selected fabric.
+- Cisco MDS zoning supports standard zones and zonesets in a VSAN. Peer zoning is currently limited to Brocade.
 - Volumes already associated with a local PowerStore policy may be incompatible with PPDM protection depending on the version. Do not combine PPDM-integrated and PowerStore-integrated remote backup.
 - Provisioning is progressive and has no automatic destructive rollback. See [docs/SECURITY.md](docs/SECURITY.md) and [docs/OPERATIONS.md](docs/OPERATIONS.md).
 
@@ -201,6 +218,8 @@ tests/                      unit tests with mocked APIs
 - [Dell PowerProtect Data Manager Public REST API](https://developer.dell.com/apis/4378)
 - [Dell PPDM Storage Array User Guide](https://www.dell.com/support/manuals/en-us/enterprise-copy-data-management/pp-dm_19.22_storage_array_ug/powerprotect-data-manager-for-storage-arrays?guid=guid-4ea1b71a-e96a-4e53-8c0e-84d4a6d1d258&lang=en-us)
 - [Broadcom SAN Design and Best Practices — REST API/YANG](https://docs.broadcom.com/doc/53-1004781)
+- [Cisco MDS NX-API Zoning Reference](https://developer.cisco.com/cisco-mds-9000-series-nx-api-reference/latest/zoning/)
+- [Cisco MDS NX-OS Programmability Guide](https://www.cisco.com/c/en/us/td/docs/dcn/mds9000/sw/9x/programmability/cisco-mds-9000-nx-os-programmability-guide-9x/nx_api.html)
 
 ## License
 

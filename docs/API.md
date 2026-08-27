@@ -34,7 +34,17 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 - Storage presentation uses a masking view: `POST .../sloprovisioning/symmetrix/{symmetrixId}/maskingview`.
 - The request supports `storageGroupId`, `srpId`, SLO, emulation, capacity, count, Port Group and version-specific `raw_overrides`.
 - The Port Group is selected from the PowerMax options or the equipment default. A missing host is created with its registered initiator WWPNs, then the masking view binds host, Port Group and Storage Group.
-- A block workflow does not finish at Storage Group creation: it presents the group to every selected host, then optionally configures Brocade zoning and assigns the discovered block asset to PPDM.
+- A block workflow does not finish at Storage Group creation: it presents the group to every selected host, then optionally configures Brocade or Cisco MDS zoning and assigns the discovered block asset to PPDM.
+
+## Cisco MDS Fibre Channel
+
+- Register the switch as equipment type `CISCO_MDS`, with an HTTPS management endpoint, API credentials and optional `api_port`.
+- Store `settings.fabric` (`A` or `B`), `settings.api_version` (default `1.2`), `settings.default_vsan` and `settings.default_zoneset` in the equipment record.
+- The existing `POST /api/equipment/{id}/test` endpoint calls NX-API `POST /ins` with `cli_show_ascii` and `show nxapi`.
+- Block requests may use `fabric_ids` to select Cisco MDS or Brocade equipment. `brocade_ids` remains accepted for compatibility with earlier requests.
+- `zoning.vsan_id` selects the Cisco VSAN when the switch has no `default_vsan`; `zoning.config_name` is the fallback zoneset name.
+- Live zoning reads `show zone vsan <id>` and `show zoneset brief [active] vsan <id>`, then sends idempotent `cli_conf` commands for the zone, PWWN members, zoneset membership and optional activation.
+- Cisco MDS currently supports standard zones/zonesets. `peer_zoning` is rejected for Cisco and remains available to the Brocade adapter.
 
 ## PowerStore NAS
 
@@ -75,3 +85,5 @@ See [examples/provision-request.json](examples/provision-request.json) for Power
 [examples/provision-powermax-request.json](examples/provision-powermax-request.json) for Storage
 Group presentation and [examples/provision-nas-request.json](examples/provision-nas-request.json)
 for share publication plus Data Domain/Protection Engine selection. Equipment IDs are internal to SANFlow.
+
+See [examples/provision-cisco-request.json](examples/provision-cisco-request.json) for a block request using Cisco MDS Fibre Channel zoning.

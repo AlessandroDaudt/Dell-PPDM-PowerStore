@@ -95,13 +95,13 @@ function renderDashboard() {
   const cards = [
     ["PowerStore", counts.POWERSTORE || 0, "Arrays cadastrados", "#365cf5"],
     ["Hosts", counts.HOST || 0, "Servidores físicos", "#667085"],
-    ["Brocade", counts.BROCADE || 0, "Switches de fabric", "#805ad5"],
+    ["Fibre Channel", (counts.BROCADE || 0) + (counts.CISCO_MDS || 0), "Switches de fabric", "#805ad5"],
     ["PPDM", counts.PPDM || 0, "Gerenciadores de proteção", "#16a1ae"],
   ];
   $("#metrics").innerHTML = cards.map(([name, count, caption, color]) =>
     `<article class="metric" style="--metric-color:${color}"><span>${name}</span><strong>${count}</strong><small>${caption}</small></article>`
   ).join("");
-  const readyTypes = ["POWERSTORE", "HOST", "BROCADE", "PPDM"].filter((type) => counts[type] > 0).length;
+  const readyTypes = ["POWERSTORE", "HOST", "PPDM"].filter((type) => counts[type] > 0).length + ((counts.BROCADE || 0) + (counts.CISCO_MDS || 0) > 0 ? 1 : 0);
   const percent = readyTypes * 25;
   $("#readinessBar").style.width = `${percent}%`;
   $("#heroReadiness").textContent = percent === 100 ? "Pronto para orquestrar" : `${readyTypes} de 4 domínios prontos`;
@@ -142,11 +142,12 @@ function renderProvisionChoices() {
   storage.innerHTML = optionList(["POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "POWERSCALE", "UNITY"]); ppdm.innerHTML = optionList("PPDM");
   storage.value = storageValue; ppdm.value = ppdmValue;
   const choices = (type, cssName) => {
-    const items = state.equipment.filter((item) => item.type === type);
-    return items.length ? items.map((item) => `<label class="choice"><input type="checkbox" name="${cssName}" value="${item.id}" /><div><strong>${escapeHtml(item.name)}</strong><small>${item.wwns.length} WWN(s) · ${escapeHtml(item.settings.fabric || item.settings.os_type || "")}</small></div></label>`).join("") : `<div class="empty-state">Cadastre ${type === "HOST" ? "um host" : "um switch"}.</div>`;
+    const types = Array.isArray(type) ? type : [type];
+    const items = state.equipment.filter((item) => types.includes(item.type));
+    return items.length ? items.map((item) => `<label class="choice"><input type="checkbox" name="${cssName}" value="${item.id}" /><div><strong>${escapeHtml(item.name)}</strong><small>${item.wwns.length} WWN(s) · ${escapeHtml(item.type === "CISCO_MDS" ? `${item.settings.fabric || "A"} · VSAN ${item.settings.default_vsan || 1}` : item.settings.fabric || item.settings.os_type || "")}</small></div></label>`).join("") : `<div class="empty-state">Cadastre ${type === "HOST" ? "um host" : "um switch"}.</div>`;
   };
   $("#hostChoices").innerHTML = choices("HOST", "hostChoice");
-  $("#brocadeChoices").innerHTML = choices("BROCADE", "brocadeChoice");
+  $("#brocadeChoices").innerHTML = choices(["BROCADE", "CISCO_MDS"], "fabricChoice");
 }
 
 function updateResourceType() {
@@ -199,6 +200,7 @@ function updateEquipmentFields() {
   $$(".powermax-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERMAX"));
   $$(".powerscale-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERSCALE"));
   $$(".unity-setting").forEach((field) => field.classList.toggle("hidden", type !== "UNITY"));
+  $$(".cisco-setting").forEach((field) => field.classList.toggle("hidden", type !== "CISCO_MDS"));
   if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : type === "POWERSCALE" ? "8080" : "443";
 }
 
@@ -227,6 +229,10 @@ function openEquipment(item = null) {
     $("#equipmentOnefsApiVersion").value = item.settings.api_version || "3";
     $("#equipmentUnityApiVersion").value = item.settings.api_version || "5.2";
     $("#equipmentDefaultPortGroup").value = item.settings.default_port_group_id || "";
+    $("#equipmentCiscoApiVersion").value = item.settings.api_version || "1.2";
+    $("#equipmentCiscoFabric").value = item.settings.fabric || "A";
+    $("#equipmentCiscoVsan").value = item.settings.default_vsan || 1;
+    $("#equipmentCiscoZoneset").value = item.settings.default_zoneset || "SANFLOW_CFG";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -234,7 +240,7 @@ function openEquipment(item = null) {
 }
 
 function parseWwns(type) {
-  const defaultRole = ["POWERSTORE", "POWERMAX"].includes(type) ? "TARGET" : type === "BROCADE" ? "SWITCH" : "INITIATOR";
+  const defaultRole = ["POWERSTORE", "POWERMAX"].includes(type) ? "TARGET" : ["BROCADE", "CISCO_MDS"].includes(type) ? "SWITCH" : "INITIATOR";
   return $("#equipmentWwns").value.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
     const [value, label = "", fabric = "A", role = defaultRole] = line.split(",").map((item) => item.trim());
     return { value, label, fabric: fabric.toUpperCase(), role: role.toUpperCase() };
@@ -257,6 +263,11 @@ async function saveEquipment(event) {
     api_version: $("#equipmentOnefsApiVersion").value || "3",
   } : type === "UNITY" ? {
     api_version: $("#equipmentUnityApiVersion").value || "5.2",
+  } : type === "CISCO_MDS" ? {
+    api_version: $("#equipmentCiscoApiVersion").value || "1.2",
+    fabric: $("#equipmentCiscoFabric").value.toUpperCase() || "A",
+    default_vsan: Number($("#equipmentCiscoVsan").value || 1),
+    default_zoneset: $("#equipmentCiscoZoneset").value || "SANFLOW_CFG",
   } : {};
   const body = {
     type, name: $("#equipmentName").value, management_address: $("#equipmentAddress").value || null,
@@ -420,7 +431,7 @@ async function submitProvision(event) {
   }
   const body = {
     storage_id: Number($("#storageId").value), ppdm_id: $("#ppdmId").value ? Number($("#ppdmId").value) : null,
-    host_ids: checkedValues("hostChoice"), brocade_ids: checkedValues("brocadeChoice"), dry_run: $("#dryRun").checked,
+    host_ids: checkedValues("hostChoice"), fabric_ids: checkedValues("fabricChoice"), dry_run: $("#dryRun").checked,
     volume: {
       name: resourceType === "VOLUME_GROUP" ? null : $("#volumeName").value,
       size_gib: resourceType === "VOLUME_GROUP" ? null : Number($("#volumeSize").value), description: $("#volumeDescription").value,
@@ -441,7 +452,7 @@ async function submitProvision(event) {
       powermax_port_group_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxPortGroup").value || null : null,
       masking_view_prefix: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxMaskingViewPrefix").value || null : null,
     },
-    zoning: { enabled: $("#zoningEnabled").checked, config_name: $("#zoneConfig").value, naming_template: $("#zoneTemplate").value, activate: $("#activateConfig").checked, peer_zoning: $("#peerZoning").checked },
+    zoning: { enabled: $("#zoningEnabled").checked, config_name: $("#zoneConfig").value, naming_template: $("#zoneTemplate").value, activate: $("#activateConfig").checked, peer_zoning: $("#peerZoning").checked, vsan_id: Number($("#vsanId").value || 1) },
     backup: {
       mode, policy_id: mode === "EXISTING_POLICY" ? $("#existingPolicy").value || null : null,
       policy_name: mode === "CREATE_POLICY" ? $("#newPolicyName").value || null : null,
@@ -456,7 +467,7 @@ async function submitProvision(event) {
       nas_protection_engine_id: resourceType.startsWith("NAS_") ? $("#nasProtectionEngine").value || null : null,
     },
   };
-  if (!body.dry_run && !confirm("Modo LIVE: este fluxo criará volume, mappings, zones e proteção. Continuar?")) return;
+  if (!body.dry_run && !confirm("Modo LIVE: este fluxo criará volume, mappings, zones, zoning Fibre Channel e proteção. Continuar?")) return;
   const submit = $("#provisionForm button[type=submit]"); submit.disabled = true; submit.textContent = "Iniciando…";
   try {
     const workflow = await api("/api/workflows", { method: "POST", body });

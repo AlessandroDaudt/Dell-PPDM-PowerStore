@@ -40,7 +40,15 @@ class WWNRead(WWNInput):
 class EquipmentCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
     type: Literal[
-        "POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "POWERSCALE", "UNITY", "PPDM", "BROCADE", "HOST"
+        "POWERSTORE",
+        "POWERMAX",
+        "POWERSTORE_NAS",
+        "POWERSCALE",
+        "UNITY",
+        "CISCO_MDS",
+        "PPDM",
+        "BROCADE",
+        "HOST",
     ]
     management_address: str | None = Field(default=None, max_length=255)
     api_port: int | None = Field(default=None, ge=1, le=65535)
@@ -62,6 +70,7 @@ class EquipmentCreate(BaseModel):
                 "POWERSTORE_NAS",
                 "POWERSCALE",
                 "UNITY",
+                "CISCO_MDS",
                 "PPDM",
                 "BROCADE",
             }
@@ -164,6 +173,7 @@ class ZoningOptions(BaseModel):
     naming_template: str = Field(default="Z_{host}_{storage}_{fabric}", max_length=128)
     activate: bool = True
     peer_zoning: bool = False
+    vsan_id: int = Field(default=1, ge=1, le=4093)
 
 
 class BackupOptions(BaseModel):
@@ -230,6 +240,7 @@ class ProvisionRequest(BaseModel):
     ppdm_id: int | None = None
     host_ids: list[int] = Field(default_factory=list)
     brocade_ids: list[int] = Field(default_factory=list)
+    fabric_ids: list[int] = Field(default_factory=list)
     volume: VolumeOptions
     zoning: ZoningOptions = Field(default_factory=ZoningOptions)
     backup: BackupOptions = Field(default_factory=BackupOptions)
@@ -241,8 +252,11 @@ class ProvisionRequest(BaseModel):
         hostless = storage_resource in {"NAS_SHARE", "NAS_DATA"}
         if not hostless and not self.host_ids:
             raise ValueError("selecione ao menos um host para este recurso block")
-        if self.zoning.enabled and not self.brocade_ids and not hostless:
-            raise ValueError("selecione ao menos um Brocade quando o zoning estiver habilitado")
+        fabric_ids = self.fabric_ids or self.brocade_ids
+        if self.zoning.enabled and not fabric_ids and not hostless:
+            raise ValueError(
+                "selecione ao menos um switch Fibre Channel quando o zoning estiver habilitado"
+            )
         if hostless and self.zoning.enabled:
             raise ValueError("zoning deve ser desabilitado para recursos sem apresentação FC")
         if storage_resource in {"NAS_SHARE", "NAS_DATA"} and self.backup.mode == "NONE":

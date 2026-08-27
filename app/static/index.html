@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Automação unificada de LUNs Dell PowerStore, zoning Brocade e proteção PPDM." />
+    <meta name="description" content="Automação unificada de LUNs Dell PowerStore, zoning Brocade ou Cisco MDS e proteção PPDM." />
     <title>SANFlow Dell</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
@@ -17,7 +17,7 @@
         <div class="brand-mark">SF</div>
         <p class="eyebrow">DELL INFRASTRUCTURE AUTOMATION</p>
         <h1>Uma LUN. Um fluxo. Zero silos.</h1>
-        <p class="muted">PowerStore, hosts físicos, Brocade e PPDM coordenados em uma única operação.</p>
+        <p class="muted">PowerStore, hosts físicos, Brocade, Cisco MDS e PPDM coordenados em uma única operação.</p>
         <label>Usuário<input name="username" autocomplete="username" value="admin" required /></label>
         <label>Senha<input name="password" type="password" autocomplete="current-password" required /></label>
         <p id="loginError" class="form-error"></p>
@@ -83,7 +83,7 @@
               <b class="flow-arrow">→</b>
               <article class="flow-node"><span class="node-number">03</span><i class="node-icon host">H</i><h4>Hosts físicos</h4><p>Registra WWPNs e cria os mappings.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">04</span><i class="node-icon brocade">B</i><h4>Brocade</h4><p>Ansible aplica zoning nas fabrics A/B.</p></article>
+              <article class="flow-node"><span class="node-number">04</span><i class="node-icon brocade">FC</i><h4>Brocade / Cisco MDS</h4><p>Ansible ou NX-API aplica zoning nas fabrics A/B.</p></article>
               <b class="flow-arrow">→</b>
               <article class="flow-node"><span class="node-number">05</span><i class="node-icon ppdm">P</i><h4>PPDM</h4><p>Descobre o asset e associa a proteção.</p></article>
               <b class="flow-arrow">→</b>
@@ -105,7 +105,7 @@
 
         <section id="page-inventory" class="page">
           <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
-          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="UNITY">Dell Unity</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="UNITY">Dell Unity</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="CISCO_MDS">Cisco MDS</button><button class="filter" data-filter="HOST">Hosts</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
@@ -156,11 +156,12 @@
             <section class="form-section">
               <div class="section-index">02</div><div class="section-body">
                 <div class="section-heading"><div><p class="eyebrow">CONECTIVIDADE</p><h3>Hosts e fabrics</h3></div></div>
-                <div class="selection-columns"><div><label class="label-title">Hosts físicos</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Switches Brocade</label><div id="brocadeChoices" class="choice-list"></div></div></div>
+                <div class="selection-columns"><div><label class="label-title">Hosts físicos</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Switches Brocade ou Cisco MDS</label><div id="brocadeChoices" class="choice-list"></div></div></div>
                 <div class="inline-options">
                   <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Executar zoning</label>
                   <label>Configuração ativa<input id="zoneConfig" value="SANFLOW_CFG" /></label>
                   <label>Template da zone<input id="zoneTemplate" value="Z_{host}_{storage}_{fabric}" /></label>
+                  <label>VSAN Cisco<input id="vsanId" type="number" min="1" max="4093" value="1" /></label>
                   <label class="check-field"><input id="peerZoning" type="checkbox" /> Peer zoning</label>
                   <label class="check-field"><input id="activateConfig" type="checkbox" checked /> Ativar configuração</label>
                 </div>
@@ -215,7 +216,7 @@
             <article class="panel"><span>03</span><h4>Habilite o modo live</h4><p>Desmarque o dry-run apenas em janela aprovada e acompanhe as seis etapas no histórico.</p></article>
             <article class="panel"><span>04</span><h4>Trate falhas por domínio</h4><p>O volume criado nunca é apagado automaticamente. Consulte o detalhe e faça a remediação consciente.</p></article>
           </div>
-          <section class="panel references"><p class="eyebrow">FONTES OFICIAIS</p><h3>Contratos usados na implementação</h3><div class="reference-links"><a href="https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md" target="_blank" rel="noreferrer">Dell PowerStore REST API ↗</a><a href="https://developer.dell.com/apis/4378" target="_blank" rel="noreferrer">Dell PPDM Public REST API ↗</a><a href="https://docs.broadcom.com/doc/53-1004781" target="_blank" rel="noreferrer">Broadcom Fabric OS REST/YANG ↗</a></div></section>
+          <section class="panel references"><p class="eyebrow">FONTES OFICIAIS</p><h3>Contratos usados na implementação</h3><div class="reference-links"><a href="https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md" target="_blank" rel="noreferrer">Dell PowerStore REST API ↗</a><a href="https://developer.dell.com/apis/4378" target="_blank" rel="noreferrer">Dell PPDM Public REST API ↗</a><a href="https://docs.broadcom.com/doc/53-1004781" target="_blank" rel="noreferrer">Broadcom Fabric OS REST/YANG ↗</a><a href="https://developer.cisco.com/cisco-mds-9000-series-nx-api-reference/latest/zoning/" target="_blank" rel="noreferrer">Cisco MDS NX-API zoning ↗</a></div></section>
         </section>
       </main>
     </div>
@@ -225,7 +226,7 @@
         <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
         <input id="equipmentId" type="hidden" />
         <div class="form-grid two">
-  <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+  <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>CISCO_MDS</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
           <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
           <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
           <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>
@@ -247,6 +248,10 @@
           <label class="powerscale-setting hidden">Versão PAPI<input id="equipmentOnefsApiVersion" value="3" placeholder="3" /></label>
           <label class="unity-setting hidden">Versão Unity API<input id="equipmentUnityApiVersion" value="5.2" placeholder="5.2" /></label>
           <label class="powermax-setting hidden">Port Group padrão<input id="equipmentDefaultPortGroup" placeholder="PG_PROD" /></label>
+          <label class="cisco-setting hidden">Versão NX-API<input id="equipmentCiscoApiVersion" value="1.2" placeholder="1.2" /></label>
+          <label class="cisco-setting hidden">Fabric<input id="equipmentCiscoFabric" value="A" placeholder="A ou B" /></label>
+          <label class="cisco-setting hidden">VSAN padrão<input id="equipmentCiscoVsan" type="number" min="1" max="4093" value="1" /></label>
+          <label class="cisco-setting hidden">Zoneset padrão<input id="equipmentCiscoZoneset" value="SANFLOW_CFG" placeholder="SANFLOW_CFG" /></label>
         </div>
         <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
         <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>

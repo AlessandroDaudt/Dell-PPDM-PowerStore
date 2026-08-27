@@ -10,6 +10,7 @@ As branches de integracao sao cumulativas. Cada etapa mantem o fluxo anterior e 
 | 3 | `feature/powerstore-nas` | File systems/shares PowerStore NAS, publicacao e rotina PPDM NAS |
 | 4 | `feature/powerscale-nas` | Shares SMB/NFS PowerScale, publicacao e rotina PPDM NAS |
 | 5 | `feature/dell-unity-nas` | Shares CIFS/NFS Dell Unity, publicacao e rotina PPDM NAS |
+| 6 | `feature/cisco-fibre-channel` | Zoning Fibre Channel Cisco MDS via NX-API, com VSAN, zoneset e ativacao idempotente |
 
 ## Fluxo de backup de storage
 
@@ -18,7 +19,7 @@ Para volumes block, a execucao segue esta ordem:
 1. validar hosts, WWPNs, fabrics, credenciais e capacidade;
 2. criar a LUN ou o grupo de volumes no array;
 3. apresentar a LUN aos hosts (mappings PowerStore ou masking view PowerMax);
-4. criar/ativar as zonas Brocade quando habilitado;
+4. criar/ativar as zonas no fabric selecionado quando habilitado (Brocade via Ansible/FOS REST ou Cisco MDS via NX-API);
 5. criar ou reutilizar a rotina PPDM com Data Domain, interface, storage unit, agenda e retencao;
 6. confirmar o recurso e registrar IDs no workflow.
 

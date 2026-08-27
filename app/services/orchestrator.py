@@ -20,6 +20,7 @@ from app.models import (
     utcnow,
 )
 from app.services.ansible_runner import run_brocade_zoning
+from app.services.cisco_mds import CiscoMDSClient
 from app.services.powermax import PowerMaxClient
 from app.services.powerscale import PowerScaleClient
 from app.services.powerstore import PowerStoreClient
@@ -31,7 +32,7 @@ STEP_NAMES = [
     "Validar inventário e WWNs",
     "Criar LUN no storage",
     "Publicar share NAS / apresentar LUN",
-    "Configurar zoning Brocade",
+    "Configurar zoning Fibre Channel",
     "Configurar proteção no PPDM",
     "Verificar resultado ponta a ponta",
 ]
@@ -101,6 +102,16 @@ class WorkflowRunner:
             )
         return equipment
 
+    def _get_fabric_equipment(self, equipment_id: int) -> Equipment:
+        equipment = self.db.get(Equipment, equipment_id)
+        if not equipment:
+            raise ValueError(f"equipamento {equipment_id} nao encontrado")
+        if equipment.type not in {EquipmentType.BROCADE.value, EquipmentType.CISCO_MDS.value}:
+            raise ValueError(
+                f"equipamento {equipment.name} e {equipment.type}, esperado Brocade ou Cisco MDS"
+            )
+        return equipment
+
     def _step(self, order: int, action: Callable[[], tuple[str, dict[str, Any]]]) -> None:
         step = next(item for item in self.workflow.steps if item.step_order == order)
         step.status = StepStatus.RUNNING.value
@@ -139,10 +150,12 @@ class WorkflowRunner:
         else:
             storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE)
         hosts = [self._get_equipment(item, EquipmentType.HOST) for item in self.request["host_ids"]]
-        brocades = [
-            self._get_equipment(item, EquipmentType.BROCADE)
-            for item in self.request.get("brocade_ids", [])
-        ]
+        fabric_ids = self.request.get("fabric_ids") or self.request.get("brocade_ids", [])
+        brocades = [self._get_fabric_equipment(item) for item in fabric_ids]
+        if self.request["zoning"]["peer_zoning"] and any(
+            item.type == EquipmentType.CISCO_MDS.value for item in brocades
+        ):
+            raise ValueError("peer zoning ainda nao e suportado para Cisco MDS")
         ppdm = None
         if self.request["backup"]["mode"] != "NONE":
             ppdm = self._get_equipment(self.request["ppdm_id"], EquipmentType.PPDM)
@@ -178,6 +191,7 @@ class WorkflowRunner:
                 "storage": storage.name,
                 "hosts": [host.name for host in hosts],
                 "brocades": [switch.name for switch in brocades],
+                "fabric_types": {switch.name: switch.type for switch in brocades},
                 "ppdm": ppdm.name if ppdm else None,
             },
         )
@@ -470,6 +484,7 @@ class WorkflowRunner:
             return "Zoning desabilitado pela solicitação", {"skipped": True}
         storage: Equipment = self.context["storage"]
         ansible_switches: list[dict[str, Any]] = []
+        cisco_tasks: list[dict[str, Any]] = []
         zone_names: list[str] = []
         for switch in self.context["brocades"]:
             settings = equipment_settings(switch)
@@ -492,6 +507,27 @@ class WorkflowRunner:
                 )
                 zone_name = re.sub(r"[^A-Za-z0-9_.-]", "_", zone_name)[:64]
                 zone_names.append(zone_name)
+                if switch.type == "CISCO_MDS":
+                    vsan_id = int(
+                        settings.get("default_vsan") or self.request["zoning"].get("vsan_id", 1)
+                    )
+                    zoneset_name = (
+                        settings.get("default_zoneset") or self.request["zoning"]["config_name"]
+                    )
+                    cisco_tasks.append(
+                        {
+                            "switch_id": switch.id,
+                            "host_id": host.id,
+                            "zone_name": zone_name,
+                            "vsan_id": vsan_id,
+                            "zoneset_name": zoneset_name,
+                            "initiator_wwns": initiators,
+                            "target_wwns": target_wwns,
+                            "activate": self.request["zoning"]["activate"],
+                            "peer_zoning": self.request["zoning"]["peer_zoning"],
+                        }
+                    )
+                    continue
                 ansible_switches.append(
                     {
                         "inventory_name": f"switch_{switch.id}_{host.id}",
@@ -519,24 +555,98 @@ class WorkflowRunner:
                         "peer_zoning": self.request["zoning"]["peer_zoning"],
                     }
                 )
-        if not ansible_switches:
+        if not ansible_switches and not cisco_tasks:
             raise ValueError("nenhuma combinação válida de WWNs por fabric para criar zonas")
         if self.workflow.dry_run:
-            result = {
-                "planned_playbook": str(get_settings().ansible_playbook),
-                "switch_tasks": [
+            result: dict[str, Any] = {}
+            if ansible_switches:
+                result["planned_playbook"] = str(get_settings().ansible_playbook)
+                result["switch_tasks"] = [
                     {
                         "switch": item["inventory_name"],
                         "zone": item["zone_name"],
                         "members": item["zone_members"],
                     }
                     for item in ansible_switches
-                ],
-            }
+                ]
+            if cisco_tasks:
+                result["cisco_tasks"] = []
+                for task in cisco_tasks:
+                    planned_commands = [
+                        f"zone name {task['zone_name']} vsan {task['vsan_id']}",
+                        *[
+                            f"member pwwn {wwn}"
+                            for wwn in task["initiator_wwns"] + task["target_wwns"]
+                        ],
+                        f"zoneset name {task['zoneset_name']} vsan {task['vsan_id']}",
+                        f"member {task['zone_name']}",
+                    ]
+                    if task["activate"]:
+                        planned_commands.append(
+                            f"zoneset activate name {task['zoneset_name']} vsan {task['vsan_id']}"
+                        )
+                    result["cisco_tasks"].append(
+                        {
+                            "switch": next(
+                                item.name
+                                for item in self.context["brocades"]
+                                if item.id == task["switch_id"]
+                            ),
+                            "host": next(
+                                item.name
+                                for item in self.context["hosts"]
+                                if item.id == task["host_id"]
+                            ),
+                            "zone": task["zone_name"],
+                            "vsan": task["vsan_id"],
+                            "zoneset": task["zoneset_name"],
+                            "planned_commands": planned_commands,
+                        }
+                    )
         else:
-            result = run_brocade_zoning(ansible_switches)
+            result = {}
+            if ansible_switches:
+                result["brocade"] = run_brocade_zoning(ansible_switches)
+            if cisco_tasks:
+                switch_by_id = {item.id: item for item in self.context["brocades"]}
+                cisco_results = []
+                for task in cisco_tasks:
+                    switch = switch_by_id[task["switch_id"]]
+                    settings = equipment_settings(switch)
+                    with CiscoMDSClient(
+                        switch.management_address or "",
+                        switch.username or "",
+                        decrypt_secret(switch.encrypted_password),
+                        switch.api_port,
+                        switch.verify_ssl,
+                        settings.get("api_version", "1.2"),
+                    ) as client:
+                        cisco_results.append(
+                            {
+                                "switch": switch.name,
+                                "host_id": task["host_id"],
+                                **client.ensure_zoning(
+                                    task["zone_name"],
+                                    task["vsan_id"],
+                                    task["zoneset_name"],
+                                    task["initiator_wwns"],
+                                    task["target_wwns"],
+                                    task["activate"],
+                                    task["peer_zoning"],
+                                ),
+                            }
+                        )
+                result["cisco"] = cisco_results
         self.context["zones"] = zone_names
-        return f"{len(zone_names)} zona(s) processada(s) via Ansible REST", result
+        adapters = [
+            name
+            for name, present in (
+                ("Brocade", bool(ansible_switches)),
+                ("Cisco NX-API", bool(cisco_tasks)),
+            )
+            if present
+        ]
+        return f"{len(zone_names)} zona(s) processada(s) via {' + '.join(adapters)}", result
 
     def _backup(self) -> tuple[str, dict[str, Any]]:
         options = self.request["backup"]
