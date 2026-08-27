@@ -340,7 +340,11 @@ class PPDMClient:
                         "id": str(uuid.uuid4()),
                         "time": [
                             {
-                                "type": "RETENTION_AND_LOCK" if options["retention_lock"] else "RETENTION",
+                                "type": (
+                                    "RETENTION_AND_LOCK"
+                                    if options["retention_lock"]
+                                    else "RETENTION"
+                                ),
                                 "unitValue": options["retention_interval"],
                                 "unitType": options["retention_unit"],
                             }
@@ -401,7 +405,9 @@ class PPDMClient:
             payload.setdefault("objectives" if v3 else "stages", []).extend(additional)
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política NAS")
+            raise ExternalAPIError(
+                "PPDM", "POST", endpoint, None, "resposta sem id da política NAS"
+            )
         return created
 
     def find_powerstore_asset(self, name: str) -> dict[str, Any] | None:

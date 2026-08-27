@@ -25,7 +25,9 @@ def test_unity_reconciles_existing_cifs_share_and_uses_csrf_for_creation():
             return httpx.Response(201, json={"entries": [{"content": {"id": "share-1"}}]})
         return httpx.Response(404, json={"message": "unexpected"})
 
-    with UnityClient("unity", "api-user", "secret", transport=httpx.MockTransport(handler)) as client:
+    with UnityClient(
+        "unity", "api-user", "secret", transport=httpx.MockTransport(handler)
+    ) as client:
         result = client.ensure_share(
             {
                 "name": "finance",
@@ -37,4 +39,7 @@ def test_unity_reconciles_existing_cifs_share_and_uses_csrf_for_creation():
 
     assert result["id"] == "share-1"
     assert result["protocol"] == "SMB"
-    assert [request.url.path for request in requests].count("/api/types/basicSystemInfo/instances") == 1
+    assert (
+        [request.url.path for request in requests].count("/api/types/basicSystemInfo/instances")
+        == 1
+    )

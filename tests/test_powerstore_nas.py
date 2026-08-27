@@ -8,7 +8,9 @@ from app.services.powerstore_nas import PowerStoreNASClient
 def test_powerstore_nas_reconciles_file_system_and_smb_share():
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/api/rest/cluster":
-            return httpx.Response(200, json=[{"id": "cluster-1"}], headers={"DELL-EMC-TOKEN": "csrf-1"})
+            return httpx.Response(
+                200, json=[{"id": "cluster-1"}], headers={"DELL-EMC-TOKEN": "csrf-1"}
+            )
         if request.url.path == "/api/rest/smb_share" and request.method == "GET":
             return httpx.Response(200, json=[])
         if request.url.path == "/api/rest/file_system" and request.method == "GET":
@@ -20,7 +22,9 @@ def test_powerstore_nas_reconciles_file_system_and_smb_share():
         if request.url.path == "/api/rest/smb_share" and request.method == "POST":
             body = json.loads(request.content)
             assert body["file_system_id"] == "fs-1"
-            return httpx.Response(201, json={"id": "share-1", "name": "FINANCE", "path": "/finance"})
+            return httpx.Response(
+                201, json={"id": "share-1", "name": "FINANCE", "path": "/finance"}
+            )
         return httpx.Response(404, json={"message": "unexpected"})
 
     with PowerStoreNASClient("ps", "u", "p", transport=httpx.MockTransport(handler)) as client:

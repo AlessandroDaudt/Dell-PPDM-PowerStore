@@ -17,7 +17,9 @@ def test_powerscale_lists_and_reconciles_nfs_export():
             return httpx.Response(201, json={"id": "export-1", "name": "finance"})
         return httpx.Response(404, json={"message": "unexpected"})
 
-    with PowerScaleClient("powerscale", "api-user", "secret", transport=httpx.MockTransport(handler)) as client:
+    with PowerScaleClient(
+        "powerscale", "api-user", "secret", transport=httpx.MockTransport(handler)
+    ) as client:
         result = client.ensure_share(
             {
                 "name": "finance",

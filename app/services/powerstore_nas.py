@@ -7,7 +7,9 @@ from app.services.powerstore import PowerStoreClient
 class PowerStoreNASClient(PowerStoreClient):
     """PowerStore file-services client for NAS discovery and reconciliation."""
 
-    def _list_optional(self, path: str, params: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    def _list_optional(
+        self, path: str, params: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         try:
             data = self.request("GET", path, params=params)
         except ExternalAPIError as exc:
@@ -56,7 +58,13 @@ class PowerStoreNASClient(PowerStoreClient):
         payload.update(options.get("raw_overrides") or {})
         created = self.request("POST", "/api/rest/file_system", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PowerStore NAS", "POST", "/api/rest/file_system", None, "resposta sem id do file system")
+            raise ExternalAPIError(
+                "PowerStore NAS",
+                "POST",
+                "/api/rest/file_system",
+                None,
+                "resposta sem id do file system",
+            )
         return {**created, "already_exists": False}
 
     def ensure_share(self, options: dict[str, Any]) -> dict[str, Any]:
@@ -87,5 +95,16 @@ class PowerStoreNASClient(PowerStoreClient):
         payload.update(options.get("raw_overrides") or {})
         created = self.request("POST", f"/api/rest/{endpoint}", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PowerStore NAS", "POST", f"/api/rest/{endpoint}", None, "resposta sem id do share")
-        return {**created, "already_exists": False, "protocol": protocol, "file_system": file_system}
+            raise ExternalAPIError(
+                "PowerStore NAS",
+                "POST",
+                f"/api/rest/{endpoint}",
+                None,
+                "resposta sem id do share",
+            )
+        return {
+            **created,
+            "already_exists": False,
+            "protocol": protocol,
+            "file_system": file_system,
+        }

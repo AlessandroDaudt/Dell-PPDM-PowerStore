@@ -42,7 +42,11 @@ class PowerScaleClient:
         if response.is_success:
             return
         raise ExternalAPIError(
-            "PowerScale", method, str(response.request.url), response.status_code, response_data(response)
+            "PowerScale",
+            method,
+            str(response.request.url),
+            response.status_code,
+            response_data(response),
         )
 
     def request(
@@ -58,7 +62,9 @@ class PowerScaleClient:
             "ok": True,
             "system": "PowerScale",
             "name": data.get("name") if isinstance(data, dict) else None,
-            "version": data.get("onefs_version", {}).get("version") if isinstance(data, dict) else None,
+            "version": (
+                data.get("onefs_version", {}).get("version") if isinstance(data, dict) else None
+            ),
         }
 
     def _collection(self, data: Any, key: str) -> list[dict[str, Any]]:

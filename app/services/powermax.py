@@ -45,7 +45,11 @@ class PowerMaxClient:
         if response.is_success:
             return
         raise ExternalAPIError(
-            "PowerMax", method, str(response.request.url), response.status_code, response_data(response)
+            "PowerMax",
+            method,
+            str(response.request.url),
+            response.status_code,
+            response_data(response),
         )
 
     def request(
@@ -74,7 +78,11 @@ class PowerMaxClient:
     def get_options(self, symmetrix_id: str) -> dict[str, Any]:
         self.symmetrix_id = symmetrix_id
         groups = self.get_storage_groups()
-        return {"api_version": self.api_version, "symmetrix_id": symmetrix_id, "storage_groups": groups}
+        return {
+            "api_version": self.api_version,
+            "symmetrix_id": symmetrix_id,
+            "storage_groups": groups,
+        }
 
     def get_storage_groups(self) -> list[dict[str, Any]]:
         data = self.request("GET", self._array_path("storagegroup"))

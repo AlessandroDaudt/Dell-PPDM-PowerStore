@@ -113,7 +113,9 @@ class PowerStoreClient:
         return result
 
     @staticmethod
-    def _require_id(data: Any, system: str, method: str, path: str, resource: str) -> dict[str, Any]:
+    def _require_id(
+        data: Any, system: str, method: str, path: str, resource: str
+    ) -> dict[str, Any]:
         if not isinstance(data, dict) or not data.get("id"):
             raise ExternalAPIError(system, method, path, None, f"resposta sem id de {resource}")
         return data

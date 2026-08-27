@@ -22,11 +22,11 @@ from app.schemas import (
 )
 from app.services.orchestrator import create_workflow, equipment_settings, run_workflow
 from app.services.powermax import PowerMaxClient
+from app.services.powerscale import PowerScaleClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
-from app.services.powerscale import PowerScaleClient
-from app.services.unity import UnityClient
 from app.services.ppdm import PPDMClient
+from app.services.unity import UnityClient
 
 router = APIRouter(prefix="/api")
 DbSession = Annotated[Session, Depends(get_db)]
@@ -254,7 +254,9 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     password = decrypt_secret(equipment.encrypted_password)
     if equipment.type in {"POWERSTORE", "POWERSTORE_NAS"}:
-        client_type = PowerStoreNASClient if equipment.type == "POWERSTORE_NAS" else PowerStoreClient
+        client_type = (
+            PowerStoreNASClient if equipment.type == "POWERSTORE_NAS" else PowerStoreClient
+        )
         with client_type(
             equipment.management_address or "",
             equipment.username or "",

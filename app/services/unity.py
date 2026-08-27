@@ -47,13 +47,19 @@ class UnityClient:
         if response.is_success:
             return
         raise ExternalAPIError(
-            "Dell Unity", method, str(response.request.url), response.status_code, response_data(response)
+            "Dell Unity",
+            method,
+            str(response.request.url),
+            response.status_code,
+            response_data(response),
         )
 
     def _bootstrap_session(self) -> dict[str, Any]:
         response = self.client.get("/api/types/basicSystemInfo/instances?compact=true")
         self._raise("GET", response)
-        self._csrf_token = response.headers.get("EMC-CSRF-TOKEN") or response.headers.get("emc-csrf-token")
+        self._csrf_token = response.headers.get("EMC-CSRF-TOKEN") or response.headers.get(
+            "emc-csrf-token"
+        )
         data = response_data(response)
         entries = self._entries(data)
         return entries[0] if entries else (data if isinstance(data, dict) else {})

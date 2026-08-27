@@ -21,11 +21,11 @@ from app.models import (
 )
 from app.services.ansible_runner import run_brocade_zoning
 from app.services.powermax import PowerMaxClient
+from app.services.powerscale import PowerScaleClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
-from app.services.powerscale import PowerScaleClient
-from app.services.unity import UnityClient
 from app.services.ppdm import PPDMClient
+from app.services.unity import UnityClient
 
 STEP_NAMES = [
     "Validar inventário e WWNs",
@@ -207,7 +207,10 @@ class WorkflowRunner:
                 created = {
                     "id": f"dryrun-powermax-sg-{self.workflow.id}",
                     "name": volume["name"],
-                    "planned_request": "POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrix_id}/storagegroup",
+                    "planned_request": (
+                        "POST /univmax/restapi/{version}/sloprovisioning/symmetrix/"
+                        "{symmetrix_id}/storagegroup"
+                    ),
                     "payload": {
                         "storageGroupId": volume["name"],
                         "num_of_vols": volume["volume_count"],
@@ -297,7 +300,10 @@ class WorkflowRunner:
 
     def _map_hosts(self) -> tuple[str, dict[str, Any]]:
         if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
-            return "Apresentação de hosts não aplicável ao Storage Group PowerMax", {"skipped": True}
+            return (
+                "Apresentação de hosts não aplicável ao Storage Group PowerMax",
+                {"skipped": True},
+            )
         if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
             return "Apresentação FC não aplicável ao recurso NAS", {"skipped": True}
         storage: Equipment = self.context["storage"]
@@ -453,7 +459,11 @@ class WorkflowRunner:
                 ppdm.verify_ssl,
             ) as client:
                 if options["mode"] == "CREATE_POLICY":
-                    policy = client.create_nas_policy(options) if is_nas else client.create_powerstore_policy(options)
+                    policy = (
+                        client.create_nas_policy(options)
+                        if is_nas
+                        else client.create_powerstore_policy(options)
+                    )
                     policy_id = policy["id"]
                 else:
                     policy_id = options["policy_id"]
