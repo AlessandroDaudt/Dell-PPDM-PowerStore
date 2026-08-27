@@ -28,9 +28,7 @@ def run_brocade_zoning(
                         item["inventory_name"]: {
                             "ansible_connection": "local",
                             **{
-                                key: value
-                                for key, value in item.items()
-                                if key != "inventory_name"
+                                key: value for key, value in item.items() if key != "inventory_name"
                             },
                         }
                         for item in switches

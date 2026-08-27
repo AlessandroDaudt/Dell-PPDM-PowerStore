@@ -45,7 +45,11 @@ class PowerMaxClient:
         if response.is_success:
             return
         raise ExternalAPIError(
-            "PowerMax", method, str(response.request.url), response.status_code, response_data(response)
+            "PowerMax",
+            method,
+            str(response.request.url),
+            response.status_code,
+            response_data(response),
         )
 
     def request(
@@ -74,7 +78,38 @@ class PowerMaxClient:
     def get_options(self, symmetrix_id: str) -> dict[str, Any]:
         self.symmetrix_id = symmetrix_id
         groups = self.get_storage_groups()
-        return {"api_version": self.api_version, "symmetrix_id": symmetrix_id, "storage_groups": groups}
+        return {
+            "api_version": self.api_version,
+            "symmetrix_id": symmetrix_id,
+            "storage_groups": groups,
+            "hosts": self.get_hosts(),
+            "port_groups": self.get_port_groups(),
+            "masking_views": self.get_masking_views(),
+        }
+
+    @staticmethod
+    def _named_items(data: Any, key: str) -> list[dict[str, Any]]:
+        if isinstance(data, dict) and isinstance(data.get(key), list):
+            return [{"id": str(value), "name": str(value)} for value in data[key]]
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)]
+        return []
+
+    def get_hosts(self) -> list[dict[str, Any]]:
+        return self._named_items(self.request("GET", self._array_path("host")), "hostId")
+
+    def get_port_groups(self) -> list[dict[str, Any]]:
+        return self._named_items(self.request("GET", self._array_path("portgroup")), "portGroupId")
+
+    def get_masking_views(self) -> list[dict[str, Any]]:
+        data = self.request("GET", self._array_path("maskingview"))
+        if isinstance(data, dict) and isinstance(data.get("maskingView"), list):
+            return [
+                {**item, "id": str(item.get("maskingViewId") or item.get("id"))}
+                for item in data["maskingView"]
+                if isinstance(item, dict) and (item.get("maskingViewId") or item.get("id"))
+            ]
+        return self._named_items(data, "maskingViewId")
 
     def get_storage_groups(self) -> list[dict[str, Any]]:
         data = self.request("GET", self._array_path("storagegroup"))
@@ -89,6 +124,10 @@ class PowerMaxClient:
         if isinstance(data, dict):
             return data
         return {"id": group_id, "name": group_id, "data": data}
+
+    def get_masking_view(self, masking_view_id: str) -> dict[str, Any]:
+        data = self.request("GET", self._array_path(f"maskingview/{masking_view_id}"))
+        return data if isinstance(data, dict) else {"id": masking_view_id, "data": data}
 
     @staticmethod
     def _require_id(data: Any, path: str) -> dict[str, Any]:
@@ -127,7 +166,9 @@ class PowerMaxClient:
             ],
         }
         payload = {key: value for key, value in payload.items() if value is not None}
-        return _deep_merge(payload, copy.deepcopy(options.get("raw_overrides") or {}))
+        overrides = copy.deepcopy(options.get("raw_overrides") or {})
+        overrides.pop("masking_view", None)
+        return _deep_merge(payload, overrides)
 
     def ensure_storage_group(self, options: dict[str, Any]) -> dict[str, Any]:
         if not self.symmetrix_id:
@@ -146,6 +187,79 @@ class PowerMaxClient:
         path = self._array_path("storagegroup")
         created = self.request("POST", path, json=self.build_storage_group_payload(options))
         return {**self._require_id(created, path), "already_exists": False}
+
+    def build_masking_view_payload(
+        self,
+        masking_view_id: str,
+        storage_group_id: str,
+        host_id: str,
+        port_group_id: str,
+        initiator_wwns: list[str],
+        host_exists: bool,
+        options: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        host_selection = (
+            {"useExistingHostParam": {"hostId": host_id}}
+            if host_exists
+            else {"createHostParam": {"hostId": host_id, "initiatorId": initiator_wwns}}
+        )
+        payload: dict[str, Any] = {
+            "executionOption": "SYNCHRONOUS",
+            "maskingViewId": masking_view_id,
+            "portGroupSelection": {"useExistingPortGroupParam": {"portGroupId": port_group_id}},
+            "hostOrHostGroupSelection": host_selection,
+            "storageGroupSelection": {
+                "useExistingStorageGroupParam": {"storageGroupId": storage_group_id}
+            },
+        }
+        overrides = (options or {}).get("raw_overrides") or {}
+        return _deep_merge(payload, copy.deepcopy(overrides.get("masking_view") or {}))
+
+    def ensure_masking_view(
+        self,
+        storage_group_id: str,
+        host_name: str,
+        initiator_wwns: list[str],
+        port_group_id: str,
+        options: dict[str, Any],
+    ) -> dict[str, Any]:
+        if not port_group_id:
+            raise ValueError("PowerMax exige um Port Group para apresentar o Storage Group ao host")
+        prefix = options.get("masking_view_prefix") or storage_group_id
+        masking_view_id = f"{prefix}_{host_name}"[:64]
+        for item in self.get_masking_views():
+            item_id = str(item.get("id") or item.get("maskingViewId") or item.get("name") or "")
+            if item_id.casefold() == masking_view_id.casefold():
+                return {**item, "id": item_id, "already_exists": True}
+
+        hosts = self.get_hosts()
+        host_id = str(options.get("powermax_host_id") or host_name)
+        host_exists = any(
+            str(item.get("id") or item.get("hostId") or item.get("name") or "").casefold()
+            == host_id.casefold()
+            for item in hosts
+        )
+        path = self._array_path("maskingview")
+        created = self.request(
+            "POST",
+            path,
+            json=self.build_masking_view_payload(
+                masking_view_id,
+                storage_group_id,
+                host_id,
+                port_group_id,
+                initiator_wwns,
+                host_exists,
+                options,
+            ),
+        )
+        if isinstance(created, dict):
+            return {
+                **created,
+                "id": str(created.get("maskingViewId") or created.get("id") or masking_view_id),
+                "already_exists": False,
+            }
+        return {"id": masking_view_id, "already_exists": False, "data": created}
 
 
 def _deep_merge(target: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:

@@ -42,7 +42,11 @@ class PowerScaleClient:
         if response.is_success:
             return
         raise ExternalAPIError(
-            "PowerScale", method, str(response.request.url), response.status_code, response_data(response)
+            "PowerScale",
+            method,
+            str(response.request.url),
+            response.status_code,
+            response_data(response),
         )
 
     def request(
@@ -58,7 +62,9 @@ class PowerScaleClient:
             "ok": True,
             "system": "PowerScale",
             "name": data.get("name") if isinstance(data, dict) else None,
-            "version": data.get("onefs_version", {}).get("version") if isinstance(data, dict) else None,
+            "version": data.get("onefs_version", {}).get("version")
+            if isinstance(data, dict)
+            else None,
         }
 
     def _collection(self, data: Any, key: str) -> list[dict[str, Any]]:
@@ -117,3 +123,18 @@ class PowerScaleClient:
         if not isinstance(created, dict) or not (created.get("id") or created.get("name")):
             raise ExternalAPIError("PowerScale", "POST", endpoint, None, "resposta sem id do share")
         return {**created, "already_exists": False, "protocol": protocol}
+
+    def publish_share(
+        self, share: dict[str, Any], options: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Confirm that the OneFS share publication is visible by its resource ID."""
+        options = options or share
+        share_id = share.get("id") or share.get("name")
+        if not share_id:
+            raise ExternalAPIError("PowerScale", "GET", "/platform/share", None, "share sem id")
+        published = self.get_share(str(share_id), options.get("nas_protocol", "NFS"))
+        if not isinstance(published, dict):
+            raise ExternalAPIError(
+                "PowerScale", "GET", "/platform/share", None, "share não publicado"
+            )
+        return {**published, "published": True}

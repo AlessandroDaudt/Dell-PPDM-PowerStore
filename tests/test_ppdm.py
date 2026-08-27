@@ -93,13 +93,9 @@ def test_v3_policy_uses_retention_lock_and_appends_objectives():
         "retention_interval": 30,
         "retention_unit": "DAY",
         "retention_lock": True,
-        "raw_overrides": {
-            "additional_objectives": [{"id": "replica-1", "type": "REPLICATION"}]
-        },
+        "raw_overrides": {"additional_objectives": [{"id": "replica-1", "type": "REPLICATION"}]},
     }
-    with PPDMClient(
-        "ppdm", "admin", "secret", transport=httpx.MockTransport(handler)
-    ) as client:
+    with PPDMClient("ppdm", "admin", "secret", transport=httpx.MockTransport(handler)) as client:
         client.create_powerstore_policy(options)
 
     body = captured["body"]
