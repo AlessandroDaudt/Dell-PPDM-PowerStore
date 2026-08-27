@@ -411,6 +411,15 @@ async function openWorkflow(id) {
     const workflow = await api(`/api/workflows/${id}`);
     $("#workflowDialogTitle").textContent = `Workflow #${workflow.id} · ${workflow.request.volume?.name || "LUN"}`;
     $("#workflowDetail").innerHTML = `${workflow.error ? `<div class="error-box">${escapeHtml(workflow.error)}</div>` : ""}<div class="timeline">${workflow.steps.map((step) => `<article class="timeline-step"><i class="timeline-dot ${step.status}"></i><div><h4>${escapeHtml(step.name)} · ${escapeHtml(step.status)}</h4><p>${escapeHtml(step.message || "Aguardando execução")}</p></div></article>`).join("")}</div>`;
+    $$(".timeline-step").forEach((element, index) => {
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "Technical details";
+      const output = document.createElement("pre");
+      output.textContent = JSON.stringify(workflow.steps[index].details || {}, null, 2);
+      details.append(summary, output);
+      element.querySelector("div")?.append(details);
+    });
     $("#workflowDialog").showModal();
   } catch (error) { toast(error.message, true); }
 }

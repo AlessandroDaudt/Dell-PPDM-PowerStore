@@ -25,7 +25,7 @@ from app.services.ppdm import PPDMClient
 
 STEP_NAMES = [
     "Validar inventário e WWNs",
-    "Criar LUN no PowerStore",
+    "Criar LUN no storage",
     "Apresentar LUN aos hosts",
     "Configurar zoning Brocade",
     "Configurar proteção no PPDM",
