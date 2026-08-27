@@ -52,7 +52,10 @@ class EquipmentCreate(BaseModel):
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
             raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
-        if self.type in {"POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE"} and not self.username:
+        if (
+            self.type in {"POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE"}
+            and not self.username
+        ):
             raise ValueError("usuário de API é obrigatório para este tipo")
         return self
 
@@ -107,6 +110,10 @@ class VolumeOptions(BaseModel):
     performance_policy_id: str | None = None
     protection_policy_id: str | None = None
     logical_unit_number: int | None = Field(default=None, ge=0, le=16383)
+    powermax_port_group_id: str | None = Field(default=None, max_length=128)
+    masking_view_prefix: str | None = Field(
+        default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$"
+    )
 
     @model_validator(mode="after")
     def validate_resource(self):
@@ -166,9 +173,7 @@ class BackupOptions(BaseModel):
     retention_lock: bool = False
     backup_level: Literal["SYNTHETIC_FULL", "FULL"] = "SYNTHETIC_FULL"
     encrypted: bool = True
-    data_consistency: Literal["CRASH_CONSISTENT", "APPLICATION_CONSISTENT"] = (
-        "CRASH_CONSISTENT"
-    )
+    data_consistency: Literal["CRASH_CONSISTENT", "APPLICATION_CONSISTENT"] = "CRASH_CONSISTENT"
     snapshot_enabled: bool = False
     replication_enabled: bool = False
     cloud_tier_enabled: bool = False
@@ -194,9 +199,7 @@ class BackupOptions(BaseModel):
                 if isinstance(value, list):
                     configured.extend(value)
             configured_types = {
-                str(item.get("type", "")).upper()
-                for item in configured
-                if isinstance(item, dict)
+                str(item.get("type", "")).upper() for item in configured if isinstance(item, dict)
             }
             missing = [
                 name
@@ -224,7 +227,7 @@ class ProvisionRequest(BaseModel):
     @model_validator(mode="after")
     def validate_integrations(self):
         storage_resource = self.volume.resource_type
-        hostless = storage_resource in {"POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"}
+        hostless = storage_resource in {"NAS_SHARE", "NAS_DATA"}
         if not hostless and not self.host_ids:
             raise ValueError("selecione ao menos um host para este recurso block")
         if self.zoning.enabled and not self.brocade_ids and not hostless:
@@ -233,6 +236,12 @@ class ProvisionRequest(BaseModel):
             raise ValueError("zoning deve ser desabilitado para recursos sem apresentação FC")
         if storage_resource in {"NAS_SHARE", "NAS_DATA"} and self.backup.mode == "NONE":
             raise ValueError("proteção PPDM é obrigatória para um recurso NAS")
+        if (
+            storage_resource in {"NAS_SHARE", "NAS_DATA"}
+            and self.backup.mode == "CREATE_POLICY"
+            and not self.backup.nas_protection_engine_id
+        ):
+            raise ValueError("NAS Protection Engine Ã© obrigatÃ³rio ao criar uma polÃ­tica NAS")
         if self.backup.mode != "NONE" and self.ppdm_id is None:
             raise ValueError("selecione um PPDM quando o backup estiver habilitado")
         return self

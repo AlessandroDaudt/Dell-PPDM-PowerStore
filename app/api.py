@@ -177,13 +177,9 @@ def add_equipment(payload: EquipmentCreate, user: AuthUser, db: DbSession):
 
 
 @router.put("/equipment/{equipment_id}", response_model=EquipmentRead)
-def update_equipment(
-    equipment_id: int, payload: EquipmentUpdate, user: AuthUser, db: DbSession
-):
+def update_equipment(equipment_id: int, payload: EquipmentUpdate, user: AuthUser, db: DbSession):
     equipment = db.scalar(
-        select(Equipment)
-        .where(Equipment.id == equipment_id)
-        .options(selectinload(Equipment.wwns))
+        select(Equipment).where(Equipment.id == equipment_id).options(selectinload(Equipment.wwns))
     )
     if not equipment:
         raise HTTPException(status_code=404, detail="equipamento não encontrado")
@@ -238,9 +234,7 @@ def delete_equipment(equipment_id: int, user: AuthUser, db: DbSession):
 
 def _get_equipment(db: Session, equipment_id: int) -> Equipment:
     equipment = db.scalar(
-        select(Equipment)
-        .where(Equipment.id == equipment_id)
-        .options(selectinload(Equipment.wwns))
+        select(Equipment).where(Equipment.id == equipment_id).options(selectinload(Equipment.wwns))
     )
     if not equipment:
         raise HTTPException(status_code=404, detail="equipamento não encontrado")
@@ -252,7 +246,9 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     password = decrypt_secret(equipment.encrypted_password)
     if equipment.type in {"POWERSTORE", "POWERSTORE_NAS"}:
-        client_type = PowerStoreNASClient if equipment.type == "POWERSTORE_NAS" else PowerStoreClient
+        client_type = (
+            PowerStoreNASClient if equipment.type == "POWERSTORE_NAS" else PowerStoreClient
+        )
         with client_type(
             equipment.management_address or "",
             equipment.username or "",
@@ -381,7 +377,10 @@ def list_workflows(
     status_filter: str | None = Query(default=None, alias="status"),
 ):
     statement = (
-        select(Workflow).options(selectinload(Workflow.steps)).order_by(desc(Workflow.id)).limit(limit)
+        select(Workflow)
+        .options(selectinload(Workflow.steps))
+        .order_by(desc(Workflow.id))
+        .limit(limit)
     )
     if status_filter:
         statement = statement.where(Workflow.status == status_filter.upper())
@@ -391,9 +390,7 @@ def list_workflows(
 @router.get("/workflows/{workflow_id}", response_model=WorkflowRead)
 def get_workflow(workflow_id: int, _: AuthUser, db: DbSession):
     workflow = db.scalar(
-        select(Workflow)
-        .where(Workflow.id == workflow_id)
-        .options(selectinload(Workflow.steps))
+        select(Workflow).where(Workflow.id == workflow_id).options(selectinload(Workflow.steps))
     )
     if not workflow:
         raise HTTPException(status_code=404, detail="workflow não encontrado")

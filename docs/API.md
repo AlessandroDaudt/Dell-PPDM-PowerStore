@@ -31,7 +31,9 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 
 - `GET /api/integrations/powermax/{id}/options` discovers the configured Symmetrix storage groups.
 - Native provisioning uses `POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrixId}/storagegroup`.
-- The request supports `storageGroupId`, `srpId`, SLO, emulation, capacity, count and version-specific `raw_overrides`.
+- Storage presentation uses a masking view: `POST .../sloprovisioning/symmetrix/{symmetrixId}/maskingview`.
+- The request supports `storageGroupId`, `srpId`, SLO, emulation, capacity, count, Port Group and version-specific `raw_overrides`.
+- The Port Group is selected from the PowerMax options or the equipment default. A missing host is created with its registered initiator WWPNs, then the masking view binds host, Port Group and Storage Group.
 
 ## PowerStore NAS
 
@@ -44,7 +46,7 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 
 - Login: `POST /api/v2/login`, then use `access_token` as a Bearer token.
 - Options: `/api/v2/nodes`, `/storage-systems`, `/datadomain-mtrees` and `/protection-policies`.
-- Assets: `GET /api/v2/assets` with `type eq "POWERSTORE_BLOCK"`.
+- Assets: `GET /api/v2/assets`; block assets are matched by name for PowerStore and PowerMax.
 - Assignment: `POST /api/v2/protection-policies/{id}/asset-assignments`.
 - Creation: `POST /api/v2/protection-policies` or `/api/v3/protection-policies`.
 
