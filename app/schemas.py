@@ -39,7 +39,7 @@ class WWNRead(WWNInput):
 
 class EquipmentCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
-    type: Literal["POWERSTORE", "POWERMAX", "PPDM", "BROCADE", "HOST"]
+    type: Literal["POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE", "HOST"]
     management_address: str | None = Field(default=None, max_length=255)
     api_port: int | None = Field(default=None, ge=1, le=65535)
     username: str | None = Field(default=None, max_length=255)
@@ -52,7 +52,7 @@ class EquipmentCreate(BaseModel):
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
             raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
-        if self.type in {"POWERSTORE", "POWERMAX", "PPDM", "BROCADE"} and not self.username:
+        if self.type in {"POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE"} and not self.username:
             raise ValueError("usuário de API é obrigatório para este tipo")
         return self
 
@@ -86,7 +86,9 @@ class VolumeOptions(BaseModel):
     name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int | None = Field(default=None, ge=1, le=65536)
     description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
-    resource_type: Literal["VOLUME", "VOLUME_GROUP", "POWERMAX_STORAGE_GROUP"] = "VOLUME"
+    resource_type: Literal[
+        "VOLUME", "VOLUME_GROUP", "POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"
+    ] = "VOLUME"
     group_name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     group_description: str | None = Field(default=None, max_length=256)
     members: list[VolumeMemberOptions] = Field(default_factory=list, max_length=128)
@@ -97,6 +99,10 @@ class VolumeOptions(BaseModel):
     slo_id: str | None = Field(default=None, max_length=128)
     emulation: Literal["FBA", "CKD"] = "FBA"
     raw_overrides: dict[str, Any] = Field(default_factory=dict)
+    nas_protocol: Literal["SMB", "NFS"] = "NFS"
+    nas_path: str | None = Field(default=None, max_length=1024)
+    nas_server_id: str | None = Field(default=None, max_length=255)
+    nas_file_system_id: str | None = Field(default=None, max_length=255)
     appliance_id: str | None = None
     performance_policy_id: str | None = None
     protection_policy_id: str | None = None
@@ -117,6 +123,15 @@ class VolumeOptions(BaseModel):
                 raise ValueError("name e size_gib são obrigatórios para POWERMAX_STORAGE_GROUP")
             if self.members or self.group_name:
                 raise ValueError("members e group_name não são usados em POWERMAX_STORAGE_GROUP")
+        elif self.resource_type in {"NAS_SHARE", "NAS_DATA"}:
+            if not self.name:
+                raise ValueError("name é obrigatório para um recurso NAS")
+            if not self.nas_path:
+                raise ValueError("nas_path é obrigatório para um recurso NAS")
+            if self.resource_type == "NAS_DATA" and self.size_gib is None:
+                raise ValueError("size_gib é obrigatório para NAS_DATA")
+            if self.members or self.group_name:
+                raise ValueError("members e group_name não são usados para um recurso NAS")
         else:
             if not self.name or self.size_gib is None:
                 raise ValueError("name e size_gib são obrigatórios para VOLUME")
@@ -158,6 +173,8 @@ class BackupOptions(BaseModel):
     replication_enabled: bool = False
     cloud_tier_enabled: bool = False
     raw_overrides: dict[str, Any] = Field(default_factory=dict)
+    nas_protection_engine_id: str | None = None
+    nas_asset_source_id: str | None = None
 
     @model_validator(mode="after")
     def validate_mode(self):
@@ -207,13 +224,15 @@ class ProvisionRequest(BaseModel):
     @model_validator(mode="after")
     def validate_integrations(self):
         storage_resource = self.volume.resource_type
-        hostless = storage_resource == "POWERMAX_STORAGE_GROUP"
+        hostless = storage_resource in {"POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"}
         if not hostless and not self.host_ids:
             raise ValueError("selecione ao menos um host para este recurso block")
         if self.zoning.enabled and not self.brocade_ids and not hostless:
             raise ValueError("selecione ao menos um Brocade quando o zoning estiver habilitado")
         if hostless and self.zoning.enabled:
-            raise ValueError("zoning deve ser desabilitado para POWERMAX_STORAGE_GROUP")
+            raise ValueError("zoning deve ser desabilitado para recursos sem apresentação FC")
+        if storage_resource in {"NAS_SHARE", "NAS_DATA"} and self.backup.mode == "NONE":
+            raise ValueError("proteção PPDM é obrigatória para um recurso NAS")
         if self.backup.mode != "NONE" and self.ppdm_id is None:
             raise ValueError("selecione um PPDM quando o backup estiver habilitado")
         return self

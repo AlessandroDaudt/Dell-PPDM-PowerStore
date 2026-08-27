@@ -22,6 +22,7 @@ from app.models import (
 from app.services.ansible_runner import run_brocade_zoning
 from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
+from app.services.powerstore_nas import PowerStoreNASClient
 from app.services.ppdm import PPDMClient
 
 STEP_NAMES = [
@@ -123,12 +124,12 @@ class WorkflowRunner:
 
     def _validate(self) -> tuple[str, dict[str, Any]]:
         resource_type = self.request["volume"].get("resource_type", "VOLUME")
-        storage_type = (
-            EquipmentType.POWERMAX
-            if resource_type == "POWERMAX_STORAGE_GROUP"
-            else EquipmentType.POWERSTORE
-        )
-        storage = self._get_equipment(self.request["storage_id"], storage_type)
+        if resource_type == "POWERMAX_STORAGE_GROUP":
+            storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERMAX)
+        elif resource_type in {"NAS_SHARE", "NAS_DATA"}:
+            storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE_NAS)
+        else:
+            storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE)
         hosts = [
             self._get_equipment(item, EquipmentType.HOST) for item in self.request["host_ids"]
         ]
@@ -148,6 +149,9 @@ class WorkflowRunner:
             settings = equipment_settings(storage)
             if not settings.get("symmetrix_id"):
                 raise ValueError(f"PowerMax {storage.name} não possui symmetrix_id configurado")
+        elif resource_type in {"NAS_SHARE", "NAS_DATA"}:
+            if not self.request["volume"].get("nas_path"):
+                raise ValueError("recurso NAS não possui nas_path")
         elif self.request["zoning"]["enabled"]:
             targets = [wwn for wwn in storage.wwns if wwn.role == "TARGET"]
             if not targets:
@@ -176,8 +180,22 @@ class WorkflowRunner:
         volume = self.request["volume"]
         is_group = volume.get("resource_type") == "VOLUME_GROUP"
         is_powermax_group = volume.get("resource_type") == "POWERMAX_STORAGE_GROUP"
+        is_nas = volume.get("resource_type") in {"NAS_SHARE", "NAS_DATA"}
         if self.workflow.dry_run:
-            if is_powermax_group:
+            if is_nas:
+                created = {
+                    "id": f"dryrun-nas-{self.workflow.id}",
+                    "name": volume["name"],
+                    "path": volume["nas_path"],
+                    "protocol": volume["nas_protocol"],
+                    "planned_requests": [
+                        "GET /api/rest/nas_server",
+                        "GET /api/rest/file_system",
+                        "GET /api/rest/smb_share or /api/rest/nfs_export",
+                        "POST /api/rest/file_system and share when the resource is new",
+                    ],
+                }
+            elif is_powermax_group:
                 created = {
                     "id": f"dryrun-powermax-sg-{self.workflow.id}",
                     "name": volume["name"],
@@ -216,7 +234,16 @@ class WorkflowRunner:
                     "planned_request": "POST /api/rest/volume",
                 }
         else:
-            if is_powermax_group:
+            if is_nas:
+                with PowerStoreNASClient(
+                    storage.management_address or "",
+                    storage.username or "",
+                    decrypt_secret(storage.encrypted_password),
+                    storage.api_port,
+                    storage.verify_ssl,
+                ) as client:
+                    created = client.ensure_share(volume)
+            elif is_powermax_group:
                 settings = equipment_settings(storage)
                 with PowerMaxClient(
                     storage.management_address or "",
@@ -252,6 +279,8 @@ class WorkflowRunner:
     def _map_hosts(self) -> tuple[str, dict[str, Any]]:
         if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
             return "Apresentação de hosts não aplicável ao Storage Group PowerMax", {"skipped": True}
+        if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
+            return "Apresentação FC não aplicável ao recurso NAS", {"skipped": True}
         storage: Equipment = self.context["storage"]
         volume_id = self.context["volume"]["id"]
         mappings: list[dict[str, Any]] = []
@@ -303,6 +332,8 @@ class WorkflowRunner:
     def _zone(self) -> tuple[str, dict[str, Any]]:
         if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
             return "Zoning não aplicável ao Storage Group PowerMax", {"skipped": True}
+        if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
+            return "Zoning não aplicável ao recurso NAS", {"skipped": True}
         if not self.request["zoning"]["enabled"]:
             return "Zoning desabilitado pela solicitação", {"skipped": True}
         storage: Equipment = self.context["storage"]
@@ -380,6 +411,7 @@ class WorkflowRunner:
         if options["mode"] == "NONE":
             return "Proteção PPDM desabilitada pela solicitação", {"skipped": True}
         ppdm: Equipment = self.context["ppdm"]
+        is_nas = self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}
         if self.workflow.dry_run:
             policy_id = options.get("policy_id") or f"dryrun-policy-{self.workflow.id}"
             result = {
@@ -388,6 +420,7 @@ class WorkflowRunner:
                 "planned_requests": [
                     "POST /api/v2/login",
                     "GET /api/v2/assets",
+                    "GET /api/v2/protection-engines (NAS)" if is_nas else "",
                     "POST /api/v2|v3/protection-policies (quando CREATE_POLICY)",
                     f"POST /api/v2/protection-policies/{policy_id}/asset-assignments",
                 ],
@@ -401,20 +434,28 @@ class WorkflowRunner:
                 ppdm.verify_ssl,
             ) as client:
                 if options["mode"] == "CREATE_POLICY":
-                    policy = client.create_powerstore_policy(options)
+                    policy = client.create_nas_policy(options) if is_nas else client.create_powerstore_policy(options)
                     policy_id = policy["id"]
                 else:
                     policy_id = options["policy_id"]
                 settings = get_settings()
-                asset_name = (
-                    self.request["volume"].get("name")
-                    or self.request["volume"].get("group_name")
-                )
-                asset = client.wait_for_powerstore_asset(
-                    asset_name,
-                    timeout=settings.ppdm_discovery_timeout,
-                    interval=settings.ppdm_discovery_interval,
-                )
+                if is_nas:
+                    asset = client.wait_for_nas_asset(
+                        self.request["volume"]["name"],
+                        self.request["volume"].get("nas_path"),
+                        timeout=settings.ppdm_discovery_timeout,
+                        interval=settings.ppdm_discovery_interval,
+                    )
+                else:
+                    asset_name = (
+                        self.request["volume"].get("name")
+                        or self.request["volume"].get("group_name")
+                    )
+                    asset = client.wait_for_powerstore_asset(
+                        asset_name,
+                        timeout=settings.ppdm_discovery_timeout,
+                        interval=settings.ppdm_discovery_interval,
+                    )
                 assignment = client.assign_asset(policy_id, asset["id"])
                 result = {
                     "policy_id": policy_id,
@@ -438,7 +479,20 @@ class WorkflowRunner:
             }
             return "Plano validado sem alterar os equipamentos", details
         storage: Equipment = self.context["storage"]
-        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
+        if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
+            storage = self.context["storage"]
+            with PowerStoreNASClient(
+                storage.management_address or "",
+                storage.username or "",
+                decrypt_secret(storage.encrypted_password),
+                storage.api_port,
+                storage.verify_ssl,
+            ) as client:
+                volume = client.get_share(
+                    self.workflow.volume_id or "",
+                    self.request["volume"].get("nas_protocol", "NFS"),
+                )
+        elif self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
             settings = equipment_settings(storage)
             with PowerMaxClient(
                 storage.management_address or "",

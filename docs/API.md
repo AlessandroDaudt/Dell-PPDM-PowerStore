@@ -33,6 +33,13 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 - Native provisioning uses `POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrixId}/storagegroup`.
 - The request supports `storageGroupId`, `srpId`, SLO, emulation, capacity, count and version-specific `raw_overrides`.
 
+## PowerStore NAS
+
+- `GET /api/integrations/powerstore/{id}/options` returns NAS servers, file systems, SMB shares and NFS exports when the equipment is registered as `POWERSTORE_NAS`.
+- `POST /api/rest/file_system` creates NAS data and `POST /api/rest/smb_share` or `POST /api/rest/nfs_export` reconciles a share.
+- NAS workflows do not configure FC hosts or Brocade zoning. They discover the resulting share in PPDM and assign it to a centralized NAS policy.
+- `GET /api/integrations/ppdm/{id}/nas-options` exposes NAS policies and Protection Engines. A live NAS policy workflow must use an engine deployed and reachable from the NAS.
+
 ## PPDM
 
 - Login: `POST /api/v2/login`, then use `access_token` as a Bearer token.

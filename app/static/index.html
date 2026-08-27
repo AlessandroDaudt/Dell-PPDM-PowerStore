@@ -105,7 +105,7 @@
 
         <section id="page-inventory" class="page">
           <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
-          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
@@ -121,7 +121,7 @@
                 <div class="section-heading"><div><p class="eyebrow">CAPACIDADE</p><h3>LUN no PowerStore</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sincronizar opções</button></div>
                 <div class="form-grid three">
                   <label>PowerStore<select id="storageId" required><option value="">Selecione</option></select></label>
-                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option><option value="POWERMAX_STORAGE_GROUP">Storage Group PowerMax</option></select></label>
+                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option><option value="POWERMAX_STORAGE_GROUP">Storage Group PowerMax</option><option value="NAS_SHARE">Share NAS</option><option value="NAS_DATA">Dados/file system NAS</option></select></label>
                   <label>Nome da LUN<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
                   <label>Tamanho (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
                   <label>Appliance<select id="applianceId"><option value="">Seleção automática</option></select></label>
@@ -141,6 +141,12 @@
                   <label>SRP ID<input id="powermaxSrp" placeholder="SRP_1" /></label>
                   <label>SLO ID<input id="powermaxSlo" placeholder="Diamond" /></label>
                   <label>Emulação<select id="powermaxEmulation"><option>FBA</option><option>CKD</option></select></label>
+                </div>
+                <div id="nasFields" class="form-grid three hidden">
+                  <label>Protocolo<select id="nasProtocol"><option>NFS</option><option>SMB</option></select></label>
+                  <label>Caminho do share/dados<input id="nasPath" placeholder="/data/financeiro ou share" /></label>
+                  <label>NAS server<select id="nasServerId"><option value="">Automático</option></select></label>
+                  <label>File system<select id="nasFileSystemId"><option value="">Automático</option></select></label>
                 </div>
               </div>
             </section>
@@ -170,6 +176,7 @@
                   <label id="dataDomainField" class="hidden">Data Domain<select id="dataDomain"><option value="">Sincronize o PPDM</option></select></label>
                   <label id="ddInterfaceField" class="hidden">Interface preferencial<select id="ddInterface"><option value="">Automática</option></select></label>
                   <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto provisionar</option></select></label>
+                  <label id="nasEngineField" class="hidden">NAS Protection Engine<select id="nasProtectionEngine"><option value="">Selecione após sincronizar</option></select></label>
                   <label>Frequência<select id="backupFrequency"><option>DAILY</option><option>HOURLY</option><option>WEEKLY</option><option>MONTHLY</option></select></label>
                   <label>Início UTC<input id="backupStart" type="time" step="1" value="22:00:00" /></label>
                   <label>Janela (horas)<input id="backupDuration" type="number" min="1" max="24" value="8" /></label>

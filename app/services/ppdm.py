@@ -152,6 +152,35 @@ class PPDMClient:
             "policies": policies,
         }
 
+    def get_nas_options(self) -> dict[str, Any]:
+        """Load NAS policies and protection engines without changing block options."""
+        version = self.get_version()
+        api = "v3" if self.uses_v3(version) else "v2"
+        policies = self._content(
+            self.request(
+                "GET",
+                f"/api/{api}/protection-policies",
+                params={"filter": 'assetType eq "NAS"', "pageSize": 500},
+            )
+        )
+        engines = self._content(
+            self.request("GET", "/api/v2/protection-engines", params={"pageSize": 500})
+        )
+        data_domains = self._content(
+            self.request("GET", "/api/v2/storage-systems", params={"pageSize": 500})
+        )
+        storage_units = self._content(
+            self.request("GET", "/api/v2/datadomain-mtrees", params={"pageSize": 500})
+        )
+        return {
+            "version": version,
+            "policy_api": api,
+            "policies": policies,
+            "protection_engines": engines,
+            "data_domains": data_domains,
+            "storage_units": storage_units,
+        }
+
     @staticmethod
     def _schedule(options: dict[str, Any], v3: bool) -> dict[str, Any]:
         start = f"{date.today().isoformat()}T{options['start_time']}Z"
@@ -282,6 +311,99 @@ class PPDMClient:
             raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política")
         return created
 
+    def create_nas_policy(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Create a centralized NAS policy that uses a NAS Protection Engine."""
+        version = self.get_version()
+        v3 = self.uses_v3(version)
+        schedule = self._schedule(options, v3)
+        objective_id = str(uuid.uuid4())
+        target: dict[str, Any] = {
+            "storageContainerId": options.get("data_domain_id"),
+            "preferredInterfaceId": options.get("data_domain_interface"),
+            "storageTargetId": options.get("storage_unit_id"),
+        }
+        if v3:
+            objective: dict[str, Any] = {
+                "id": objective_id,
+                "type": "BACKUP",
+                "config": {"dataConsistency": options["data_consistency"]},
+                "target": {key: value for key, value in target.items() if value},
+                "operations": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "backupLevel": options["backup_level"],
+                        "schedule": schedule,
+                    }
+                ],
+                "retentions": [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "time": [
+                            {
+                                "type": "RETENTION_AND_LOCK" if options["retention_lock"] else "RETENTION",
+                                "unitValue": options["retention_interval"],
+                                "unitType": options["retention_unit"],
+                            }
+                        ],
+                    }
+                ],
+            }
+            if options.get("nas_protection_engine_id"):
+                objective["protectionEngineId"] = options["nas_protection_engine_id"]
+            payload: dict[str, Any] = {
+                "name": options["policy_name"],
+                "assetType": "NAS",
+                "disabled": False,
+                "purpose": "CENTRALIZED",
+                "objectives": [objective],
+            }
+            endpoint = "/api/v3/protection-policies"
+        else:
+            stage: dict[str, Any] = {
+                "id": objective_id,
+                "type": "PROTECTION",
+                "passive": False,
+                "target": {
+                    "storageSystemId": options.get("data_domain_id"),
+                    "preferredInterfaceId": options.get("data_domain_interface"),
+                    "storageTargetId": options.get("storage_unit_id"),
+                },
+                "operations": [
+                    {
+                        "type": "AUTO_FULL",
+                        "backupType": options["backup_level"],
+                        "schedule": schedule,
+                    }
+                ],
+                "retention": {
+                    "interval": options["retention_interval"],
+                    "unit": options["retention_unit"],
+                    "storageSystemRetentionLock": options["retention_lock"],
+                },
+            }
+            if options.get("nas_protection_engine_id"):
+                stage["protectionEngineId"] = options["nas_protection_engine_id"]
+            payload = {
+                "name": options["policy_name"],
+                "assetType": "NAS",
+                "type": "ACTIVE",
+                "encrypted": options["encrypted"],
+                "enabled": True,
+                "priority": 1,
+                "dataConsistency": options["data_consistency"],
+                "stages": [stage],
+            }
+            endpoint = "/api/v2/protection-policies"
+        overrides = copy.deepcopy(options.get("raw_overrides") or {})
+        additional = overrides.pop("additional_objectives", [])
+        payload = deep_merge(payload, overrides)
+        if additional:
+            payload.setdefault("objectives" if v3 else "stages", []).extend(additional)
+        created = self.request("POST", endpoint, json=payload)
+        if not isinstance(created, dict) or not created.get("id"):
+            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política NAS")
+        return created
+
     def find_powerstore_asset(self, name: str) -> dict[str, Any] | None:
         data = self.request(
             "GET",
@@ -299,6 +421,41 @@ class PPDMClient:
             }:
                 return asset
         return assets[0] if assets else None
+
+    def find_nas_asset(self, name: str, path: str | None = None) -> dict[str, Any] | None:
+        data = self.request(
+            "GET",
+            "/api/v2/assets",
+            params={"filter": 'type eq "NAS"', "pageSize": 500},
+        )
+        assets = self._content(data)
+        wanted = path or name
+        for asset in assets:
+            values = {str(asset.get(key, "")) for key in ("name", "path", "sharePath", "assetPath")}
+            if name in values or wanted in values:
+                return asset
+        return assets[0] if len(assets) == 1 else None
+
+    def wait_for_nas_asset(
+        self, name: str, path: str | None = None, timeout: int = 180, interval: int = 10
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        while True:
+            asset = self.find_nas_asset(name, path)
+            if asset:
+                return asset
+            if time.monotonic() >= deadline:
+                raise ExternalAPIError(
+                    "PPDM", "GET", "/api/v2/assets", None,
+                    f"share NAS {path or name} não apareceu no inventário em {timeout}s; "
+                    "confirme a origem NAS e a implantação do NAS Protection Engine",
+                )
+            time.sleep(interval)
+
+    def assign_assets(self, policy_id: str, asset_ids: list[str]) -> Any:
+        return self.request(
+            "POST", f"/api/v2/protection-policies/{policy_id}/asset-assignments", json=asset_ids
+        )
 
     def wait_for_powerstore_asset(
         self, name: str, timeout: int = 180, interval: int = 10

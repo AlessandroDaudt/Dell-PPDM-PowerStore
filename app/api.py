@@ -23,6 +23,7 @@ from app.schemas import (
 from app.services.orchestrator import create_workflow, equipment_settings, run_workflow
 from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
+from app.services.powerstore_nas import PowerStoreNASClient
 from app.services.ppdm import PPDMClient
 
 router = APIRouter(prefix="/api")
@@ -250,8 +251,9 @@ def _get_equipment(db: Session, equipment_id: int) -> Equipment:
 def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     password = decrypt_secret(equipment.encrypted_password)
-    if equipment.type == "POWERSTORE":
-        with PowerStoreClient(
+    if equipment.type in {"POWERSTORE", "POWERSTORE_NAS"}:
+        client_type = PowerStoreNASClient if equipment.type == "POWERSTORE_NAS" else PowerStoreClient
+        with client_type(
             equipment.management_address or "",
             equipment.username or "",
             password,
@@ -291,6 +293,15 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
 @router.get("/integrations/powerstore/{equipment_id}/options")
 def powerstore_options(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
+    if equipment.type == "POWERSTORE_NAS":
+        with PowerStoreNASClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            decrypt_secret(equipment.encrypted_password),
+            equipment.api_port,
+            equipment.verify_ssl,
+        ) as client:
+            return client.get_nas_options()
     if equipment.type != "POWERSTORE":
         raise HTTPException(status_code=400, detail="equipamento não é PowerStore")
     with PowerStoreClient(
@@ -336,6 +347,21 @@ def ppdm_options(equipment_id: int, _: AuthUser, db: DbSession):
         equipment.verify_ssl,
     ) as client:
         return client.get_options()
+
+
+@router.get("/integrations/ppdm/{equipment_id}/nas-options")
+def ppdm_nas_options(equipment_id: int, _: AuthUser, db: DbSession):
+    equipment = _get_equipment(db, equipment_id)
+    if equipment.type != "PPDM":
+        raise HTTPException(status_code=400, detail="equipamento não é PPDM")
+    with PPDMClient(
+        equipment.management_address or "",
+        equipment.username or "",
+        decrypt_secret(equipment.encrypted_password),
+        equipment.api_port,
+        equipment.verify_ssl,
+    ) as client:
+        return client.get_nas_options()
 
 
 @router.post("/workflows", response_model=WorkflowRead, status_code=202)

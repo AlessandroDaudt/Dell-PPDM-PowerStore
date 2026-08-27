@@ -139,7 +139,7 @@ function renderProvisionChoices() {
   const keep = (element) => element.value;
   const storage = $("#storageId"), ppdm = $("#ppdmId");
   const storageValue = keep(storage), ppdmValue = keep(ppdm);
-  storage.innerHTML = optionList(["POWERSTORE", "POWERMAX"]); ppdm.innerHTML = optionList("PPDM");
+  storage.innerHTML = optionList(["POWERSTORE", "POWERMAX", "POWERSTORE_NAS"]); ppdm.innerHTML = optionList("PPDM");
   storage.value = storageValue; ppdm.value = ppdmValue;
   const choices = (type, cssName) => {
     const items = state.equipment.filter((item) => item.type === type);
@@ -152,18 +152,25 @@ function renderProvisionChoices() {
 function updateResourceType() {
   const group = $("#resourceType").value === "VOLUME_GROUP";
   const powermax = $("#resourceType").value === "POWERMAX_STORAGE_GROUP";
+  const nas = ["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value);
   $("#volumeGroupFields").classList.toggle("hidden", !group);
   $("#powermaxFields").classList.toggle("hidden", !powermax);
+  $("#nasFields").classList.toggle("hidden", !nas);
   $("#volumeName").required = !group;
-  $("#volumeSize").required = !group;
+  $("#volumeSize").required = ["VOLUME", "POWERMAX_STORAGE_GROUP", "NAS_DATA"].includes($("#resourceType").value);
   $("#groupName").required = group;
   $("#groupMembers").required = group;
-  $("#zoningEnabled").checked = !powermax;
-  $("#zoningEnabled").disabled = powermax;
-  $("#zoningEnabled").closest(".inline-options").classList.toggle("disabled-section", powermax);
-  $("#hostChoices").closest(".selection-columns").classList.toggle("disabled-section", powermax);
+  $("#nasPath").required = nas;
+  const hostless = powermax || nas;
+  $("#zoningEnabled").checked = !hostless;
+  $("#zoningEnabled").disabled = hostless;
+  $("#zoningEnabled").closest(".inline-options").classList.toggle("disabled-section", hostless);
+  $("#hostChoices").closest(".selection-columns").classList.toggle("disabled-section", hostless);
   if (powermax && $("#backupMode").value !== "NONE") {
     $("#backupMode").value = "NONE";
+    updateBackupMode();
+  } else if (nas && $("#backupMode").value === "NONE") {
+    $("#backupMode").value = "EXISTING_POLICY";
     updateBackupMode();
   }
 }
@@ -171,7 +178,8 @@ function updateResourceType() {
 function updateStorageResourceDefaults() {
   const selected = $("#storageId").selectedOptions[0];
   if (selected?.dataset.type === "POWERMAX") $("#resourceType").value = "POWERMAX_STORAGE_GROUP";
-  else if ($("#resourceType").value === "POWERMAX_STORAGE_GROUP") $("#resourceType").value = "VOLUME";
+  else if (selected?.dataset.type === "POWERSTORE_NAS") $("#resourceType").value = "NAS_SHARE";
+  else if (["POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value)) $("#resourceType").value = "VOLUME";
   updateResourceType();
 }
 
@@ -283,6 +291,8 @@ async function syncPowerStore() {
     fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
     fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");
     fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "Sem política local");
+    fillSelect("#nasServerId", state.powerstoreOptions.nas_servers, (item) => item.name || item.id, "Automático");
+    fillSelect("#nasFileSystemId", state.powerstoreOptions.file_systems, (item) => item.name || item.id, "Automático");
     toast("Opções do PowerStore atualizadas em tempo real.");
   } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; button.textContent = "↻ Sincronizar opções"; }
@@ -300,10 +310,12 @@ async function syncPpdm() {
   const id = $("#ppdmId").value; if (!id) return toast("Selecione um PPDM.", true);
   const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Consultando…";
   try {
-    state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/options`);
+    const nas = ["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value);
+    state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/${nas ? "nas-options" : "options"}`);
     fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Selecione uma política");
     fillSelect("#dataDomain", state.ppdmOptions.data_domains, (item) => item.name || item.id, "Selecione um Data Domain");
     updateDdDependentOptions();
+    fillSelect("#nasProtectionEngine", state.ppdmOptions.protection_engines, (item) => item.name || item.id, "Automático");
     updateBackupMode();
     toast(`PPDM ${state.ppdmOptions.version}: Data Domains, storage units e políticas atualizados.`);
   } catch (error) { toast(error.message, true); }
@@ -352,6 +364,7 @@ function updateBackupMode() {
   const resetAdvancedSelections = create && $("#snapshotEnabled").disabled;
   $("#existingPolicyField").classList.toggle("hidden", !existing);
   ["#newPolicyField", "#dataDomainField", "#ddInterfaceField", "#storageUnitField"].forEach((id) => $(id).classList.toggle("hidden", !create));
+  $("#nasEngineField").classList.toggle("hidden", !["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value));
   const policyOptionIds = [
     "#backupFrequency", "#backupStart", "#backupDuration", "#backupInterval",
     "#retentionInterval", "#retentionUnit", "#backupLevel", "#dataConsistency",
@@ -402,6 +415,10 @@ async function submitProvision(event) {
       srp_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxSrp").value || null : null,
       slo_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxSlo").value || null : null,
       emulation: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxEmulation").value : "FBA",
+      nas_protocol: resourceType.startsWith("NAS_") ? $("#nasProtocol").value : "NFS",
+      nas_path: resourceType.startsWith("NAS_") ? $("#nasPath").value || null : null,
+      nas_server_id: resourceType.startsWith("NAS_") ? $("#nasServerId").value || null : null,
+      nas_file_system_id: resourceType.startsWith("NAS_") ? $("#nasFileSystemId").value || null : null,
       appliance_id: $("#applianceId").value || null, performance_policy_id: $("#performancePolicy").value || null,
       protection_policy_id: $("#localProtectionPolicy").value || null, logical_unit_number: $("#lunNumber").value ? Number($("#lunNumber").value) : null,
     },
@@ -417,6 +434,7 @@ async function submitProvision(event) {
       retention_lock: $("#retentionLock").checked, backup_level: $("#backupLevel").value, encrypted: $("#encryptedBackup").checked,
       data_consistency: $("#dataConsistency").value, snapshot_enabled: $("#snapshotEnabled").checked,
       replication_enabled: $("#replicationEnabled").checked, cloud_tier_enabled: $("#cloudTierEnabled").checked, raw_overrides: rawOverrides,
+      nas_protection_engine_id: resourceType.startsWith("NAS_") ? $("#nasProtectionEngine").value || null : null,
     },
   };
   if (!body.dry_run && !confirm("Modo LIVE: este fluxo criará volume, mappings, zones e proteção. Continuar?")) return;

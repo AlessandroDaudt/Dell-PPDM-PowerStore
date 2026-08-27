@@ -95,3 +95,33 @@ def test_powermax_storage_group_is_hostless_when_zoning_is_disabled():
         }
     )
     assert request.volume.resource_type == "POWERMAX_STORAGE_GROUP"
+
+
+def test_nas_resource_requires_ppdm_and_path():
+    request = ProvisionRequest.model_validate(
+        {
+            "storage_id": 11,
+            "host_ids": [],
+            "volume": {
+                "resource_type": "NAS_SHARE",
+                "name": "FINANCE",
+                "nas_path": "/finance",
+            },
+            "zoning": {"enabled": False},
+            "ppdm_id": 12,
+            "backup": {"mode": "EXISTING_POLICY", "policy_id": "nas-policy"},
+        }
+    )
+    assert request.volume.nas_protocol == "NFS"
+
+    with pytest.raises(ValidationError):
+        ProvisionRequest.model_validate(
+            {
+                "storage_id": 11,
+                "host_ids": [],
+                "volume": {"resource_type": "NAS_SHARE", "name": "FINANCE"},
+                "zoning": {"enabled": False},
+                "ppdm_id": 12,
+                "backup": {"mode": "EXISTING_POLICY", "policy_id": "nas-policy"},
+            }
+        )

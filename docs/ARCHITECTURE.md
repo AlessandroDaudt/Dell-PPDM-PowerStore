@@ -9,7 +9,7 @@ In this scope, “presenting a LUN” means registering/reconciling host WWPNs i
 ## Domains
 
 1. **Inventory:** equipment, endpoints, encrypted credentials, device-specific settings and WWNs.
-2. **Discovery:** real-time PowerStore, PowerMax and PPDM option retrieval.
+2. **Discovery:** real-time PowerStore block, PowerMax, PowerStore NAS and PPDM option retrieval.
 3. **Orchestration:** persistent, sequential and audited workflows.
 4. **Integrations:** REST clients with sessions, TLS, timeouts and normalized errors.
 5. **Zoning:** an isolated Ansible process whose temporary inventory is removed when it finishes.
@@ -54,6 +54,7 @@ erDiagram
 - Existing mappings between a host and volume are detected.
 - A PowerStore block group is represented by the array as a `volume_group` and its members are created with `volume_group_id`; group host mapping uses the native group endpoint when available.
 - A PowerMax Storage Group is reconciled by name through Unisphere REST and is provisioned using the array's SRP/SLO policy; repeated runs do not create a duplicate group.
+- A PowerStore NAS resource is reconciled by share path. `NAS_DATA` creates a file system before the share; both resource types are discovered and protected as PPDM NAS assets.
 - The playbook reads the defined configuration, does not recreate existing zones and preserves cfg members.
 - PPDM assignment runs after asset discovery. A new run should use an existing policy or a new policy name to avoid duplicates.
 
@@ -65,5 +66,7 @@ There is no distributed transaction across the four products. Each step is confi
 
 - PowerStore: `/api/rest` base URI, with `DELL-EMC-TOKEN` for mutations.
 - PowerMax: Unisphere `/univmax/restapi/{version}` with Basic Auth and a configured Symmetrix ID.
+- PowerStore NAS: the same PowerStore REST session and CSRF token as block resources, using file-service endpoints.
+- PPDM NAS: a NAS asset source and a deployed NAS Protection Engine are prerequisites for live protection.
 - PPDM: v2 login; v2 policies through 19.16 and v3 from 19.17 onward, following Dell’s published transition.
 - Fabric OS: REST login, `brocade-zone` YANG module, ZoneDB checksum and different actions for FOS 9.1 and 9.2+.
