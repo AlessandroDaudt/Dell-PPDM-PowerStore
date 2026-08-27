@@ -138,9 +138,15 @@ class PPDMClient:
             self.request(
                 "GET",
                 f"/api/{api}/protection-policies",
-                params={"filter": 'assetType eq "POWERSTORE_BLOCK"', "pageSize": 500},
+                params={"pageSize": 500},
             )
         )
+        policies = [
+            item
+            for item in policies
+            if not item.get("assetType")
+            or str(item.get("assetType")).upper() in {"POWERSTORE_BLOCK", "POWERMAX_BLOCK"}
+        ]
         mtrees = self._content(
             self.request("GET", "/api/v2/datadomain-mtrees", params={"pageSize": 500})
         )
@@ -190,7 +196,7 @@ class PPDMClient:
         if v3:
             payload: dict[str, Any] = {
                 "name": options["policy_name"],
-                "assetType": "POWERSTORE_BLOCK",
+                "assetType": options.get("asset_type", "POWERSTORE_BLOCK"),
                 "disabled": False,
                 "purpose": "CENTRALIZED",
                 "objectives": [
@@ -235,7 +241,7 @@ class PPDMClient:
         else:
             payload = {
                 "name": options["policy_name"],
-                "assetType": "POWERSTORE_BLOCK",
+                "assetType": options.get("asset_type", "POWERSTORE_BLOCK"),
                 "type": "ACTIVE",
                 "encrypted": options["encrypted"],
                 "enabled": True,
@@ -299,6 +305,38 @@ class PPDMClient:
             }:
                 return asset
         return assets[0] if assets else None
+
+    def find_block_asset(self, name: str) -> dict[str, Any] | None:
+        """Find a discovered block asset without assuming the array vendor subtype."""
+        data = self.request(
+            "GET",
+            "/api/v2/assets",
+            params={"filter": f'name eq "{name}"', "pageSize": 500},
+        )
+        assets = self._content(data)
+        for asset in assets:
+            if str(asset.get("name", "")) == name:
+                return asset
+        return assets[0] if len(assets) == 1 else None
+
+    def wait_for_block_asset(
+        self, name: str, timeout: int = 180, interval: int = 10
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout
+        while True:
+            asset = self.find_block_asset(name)
+            if asset:
+                return asset
+            if time.monotonic() >= deadline:
+                raise ExternalAPIError(
+                    "PPDM",
+                    "GET",
+                    "/api/v2/assets",
+                    None,
+                    f"recurso block {name} nÃ£o apareceu no inventÃ¡rio em {timeout}s; "
+                    "execute a descoberta do storage no PPDM",
+                )
+            time.sleep(interval)
 
     def wait_for_powerstore_asset(
         self, name: str, timeout: int = 180, interval: int = 10

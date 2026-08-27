@@ -4,7 +4,7 @@
 
 SANFlow is a control plane, not a data plane. It coordinates management systems; I/O and backup traffic continue to flow directly between hosts, PowerStore and PowerProtect DD.
 
-In this scope, “presenting a LUN” means registering/reconciling host WWPNs in PowerStore, creating the mapping and configuring zoning across the fabrics. SCSI rescan, multipath and filesystem work inside the operating system remain host-side activities, so SANFlow does not need SSH credentials for servers.
+In this scope, “presenting a LUN” means registering/reconciling host WWPNs in PowerStore or creating a PowerMax masking view, then configuring zoning across the fabrics. SCSI rescan, multipath and filesystem work inside the operating system remain host-side activities, so SANFlow does not need SSH credentials for servers.
 
 ## Domains
 
@@ -54,6 +54,7 @@ erDiagram
 - Existing mappings between a host and volume are detected.
 - A PowerStore block group is represented by the array as a `volume_group` and its members are created with `volume_group_id`; group host mapping uses the native group endpoint when available.
 - A PowerMax Storage Group is reconciled by name through Unisphere REST and is provisioned using the array's SRP/SLO policy; repeated runs do not create a duplicate group.
+- A PowerMax Storage Group is presented through a masking view that binds the Storage Group, a Port Group and each selected host. Missing PowerMax hosts are created from the registered initiator WWPNs.
 - The playbook reads the defined configuration, does not recreate existing zones and preserves cfg members.
 - PPDM assignment runs after asset discovery. A new run should use an existing policy or a new policy name to avoid duplicates.
 

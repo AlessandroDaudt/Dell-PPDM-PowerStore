@@ -79,11 +79,11 @@ def test_powerstore_volume_group_requires_group_members():
         VolumeOptions(resource_type="VOLUME_GROUP", group_name="APP-GRP")
 
 
-def test_powermax_storage_group_is_hostless_when_zoning_is_disabled():
+def test_powermax_storage_group_requires_hosts_for_block_presentation():
     request = ProvisionRequest.model_validate(
         {
             "storage_id": 10,
-            "host_ids": [],
+                "host_ids": [2],
             "volume": {
                 "resource_type": "POWERMAX_STORAGE_GROUP",
                 "name": "APP_SG",

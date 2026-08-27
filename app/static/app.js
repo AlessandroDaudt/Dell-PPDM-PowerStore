@@ -158,14 +158,10 @@ function updateResourceType() {
   $("#volumeSize").required = !group;
   $("#groupName").required = group;
   $("#groupMembers").required = group;
-  $("#zoningEnabled").checked = !powermax;
-  $("#zoningEnabled").disabled = powermax;
-  $("#zoningEnabled").closest(".inline-options").classList.toggle("disabled-section", powermax);
-  $("#hostChoices").closest(".selection-columns").classList.toggle("disabled-section", powermax);
-  if (powermax && $("#backupMode").value !== "NONE") {
-    $("#backupMode").value = "NONE";
-    updateBackupMode();
-  }
+  $("#zoningEnabled").checked = true;
+  $("#zoningEnabled").disabled = false;
+  $("#zoningEnabled").closest(".inline-options").classList.remove("disabled-section");
+  $("#hostChoices").closest(".selection-columns").classList.remove("disabled-section");
 }
 
 function updateStorageResourceDefaults() {
@@ -212,10 +208,12 @@ function openEquipment(item = null) {
     $("#equipmentFos").value = item.settings.fos_generation || "9.1";
     $("#equipmentOs").value = item.settings.os_type || "Linux";
     $("#equipmentHostId").value = item.settings.powerstore_host_id || "";
+    $("#equipmentPowermaxHostId").value = item.settings.powermax_host_id || "";
     $("#equipmentSymmetrixId").value = item.settings.symmetrix_id || "";
     $("#equipmentApiVersion").value = item.settings.api_version || "100";
     $("#equipmentDefaultSrp").value = item.settings.default_srp_id || "";
     $("#equipmentDefaultSlo").value = item.settings.default_slo_id || "";
+    $("#equipmentDefaultPortGroup").value = item.settings.default_port_group_id || "";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -223,7 +221,7 @@ function openEquipment(item = null) {
 }
 
 function parseWwns(type) {
-  const defaultRole = type === "POWERSTORE" ? "TARGET" : type === "BROCADE" ? "SWITCH" : "INITIATOR";
+  const defaultRole = ["POWERSTORE", "POWERMAX"].includes(type) ? "TARGET" : type === "BROCADE" ? "SWITCH" : "INITIATOR";
   return $("#equipmentWwns").value.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => {
     const [value, label = "", fabric = "A", role = defaultRole] = line.split(",").map((item) => item.trim());
     return { value, label, fabric: fabric.toUpperCase(), role: role.toUpperCase() };
@@ -236,11 +234,12 @@ async function saveEquipment(event) {
   const settings = type === "BROCADE" ? {
     fabric: $("#equipmentFabric").value.toUpperCase(), fid: Number($("#equipmentFid").value),
     active_config: $("#equipmentActiveConfig").value, fos_generation: $("#equipmentFos").value,
-  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null } : type === "POWERMAX" ? {
+  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null, powermax_host_id: $("#equipmentPowermaxHostId").value || null } : type === "POWERMAX" ? {
     symmetrix_id: $("#equipmentSymmetrixId").value || null,
     api_version: $("#equipmentApiVersion").value || "100",
     default_srp_id: $("#equipmentDefaultSrp").value || null,
     default_slo_id: $("#equipmentDefaultSlo").value || null,
+    default_port_group_id: $("#equipmentDefaultPortGroup").value || null,
   } : {};
   const body = {
     type, name: $("#equipmentName").value, management_address: $("#equipmentAddress").value || null,
@@ -279,10 +278,13 @@ async function syncPowerStore() {
   const id = $("#storageId").value; if (!id) return toast("Selecione um PowerStore.", true);
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Sincronizando…";
   try {
-    state.powerstoreOptions = await api(`/api/integrations/powerstore/${id}/options`);
+    const selectedType = $("#storageId").selectedOptions[0]?.dataset.type;
+    const endpoint = selectedType === "POWERMAX" ? "powermax" : "powerstore";
+    state.powerstoreOptions = await api(`/api/integrations/${endpoint}/${id}/options`);
     fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
     fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");
     fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "Sem política local");
+    fillSelect("#powermaxPortGroup", state.powerstoreOptions.port_groups, (item) => item.name || item.id, "Informe no cadastro do PowerMax");
     toast("Opções do PowerStore atualizadas em tempo real.");
   } catch (error) { toast(error.message, true); }
   finally { button.disabled = false; button.textContent = "↻ Sincronizar opções"; }
@@ -404,6 +406,8 @@ async function submitProvision(event) {
       emulation: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxEmulation").value : "FBA",
       appliance_id: $("#applianceId").value || null, performance_policy_id: $("#performancePolicy").value || null,
       protection_policy_id: $("#localProtectionPolicy").value || null, logical_unit_number: $("#lunNumber").value ? Number($("#lunNumber").value) : null,
+      powermax_port_group_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxPortGroup").value || null : null,
+      masking_view_prefix: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxMaskingViewPrefix").value || null : null,
     },
     zoning: { enabled: $("#zoningEnabled").checked, config_name: $("#zoneConfig").value, naming_template: $("#zoneTemplate").value, activate: $("#activateConfig").checked, peer_zoning: $("#peerZoning").checked },
     backup: {

@@ -129,9 +129,7 @@ class WorkflowRunner:
             else EquipmentType.POWERSTORE
         )
         storage = self._get_equipment(self.request["storage_id"], storage_type)
-        hosts = [
-            self._get_equipment(item, EquipmentType.HOST) for item in self.request["host_ids"]
-        ]
+        hosts = [self._get_equipment(item, EquipmentType.HOST) for item in self.request["host_ids"]]
         brocades = [
             self._get_equipment(item, EquipmentType.BROCADE)
             for item in self.request.get("brocade_ids", [])
@@ -181,7 +179,10 @@ class WorkflowRunner:
                 created = {
                     "id": f"dryrun-powermax-sg-{self.workflow.id}",
                     "name": volume["name"],
-                    "planned_request": "POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrix_id}/storagegroup",
+                    "planned_request": (
+                        "POST /univmax/restapi/{version}/sloprovisioning/symmetrix/"
+                        "{symmetrix_id}/storagegroup"
+                    ),
                     "payload": {
                         "storageGroupId": volume["name"],
                         "num_of_vols": volume["volume_count"],
@@ -250,13 +251,35 @@ class WorkflowRunner:
         return f"LUN {resource_name} preparada", created
 
     def _map_hosts(self) -> tuple[str, dict[str, Any]]:
-        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
-            return "Apresentação de hosts não aplicável ao Storage Group PowerMax", {"skipped": True}
         storage: Equipment = self.context["storage"]
         volume_id = self.context["volume"]["id"]
+        resource_type = self.request["volume"].get("resource_type")
         mappings: list[dict[str, Any]] = []
         if self.workflow.dry_run:
             for host in self.context["hosts"]:
+                if resource_type == "POWERMAX_STORAGE_GROUP":
+                    port_group_id = self.request["volume"].get(
+                        "powermax_port_group_id"
+                    ) or equipment_settings(storage).get("default_port_group_id")
+                    mappings.append(
+                        {
+                            "host": host.name,
+                            "host_id": equipment_settings(host).get("powermax_host_id")
+                            or host.name,
+                            "storage_group_id": volume_id,
+                            "port_group_id": port_group_id,
+                            "masking_view_id": (
+                                f"{self.request['volume'].get('masking_view_prefix') or volume_id}_"
+                                f"{host.name}"
+                            )[:64],
+                            "planned_requests": [
+                                "GET /sloprovisioning/symmetrix/{id}/maskingview",
+                                "GET /sloprovisioning/symmetrix/{id}/host",
+                                "POST /sloprovisioning/symmetrix/{id}/maskingview",
+                            ],
+                        }
+                    )
+                    continue
                 mappings.append(
                     {
                         "host": host.name,
@@ -273,36 +296,62 @@ class WorkflowRunner:
                     }
                 )
         else:
-            with PowerStoreClient(
-                storage.management_address or "",
-                storage.username or "",
-                decrypt_secret(storage.encrypted_password),
-                storage.api_port,
-                storage.verify_ssl,
-            ) as client:
-                for host in self.context["hosts"]:
-                    settings = equipment_settings(host)
-                    registered = client.ensure_host(
-                        host.name,
-                        settings.get("os_type", "Linux"),
-                        [wwn.value for wwn in host.wwns if wwn.role == "INITIATOR"],
-                        settings.get("powerstore_host_id"),
-                    )
-                    if self.request["volume"].get("resource_type") == "VOLUME_GROUP":
-                        mapped = client.map_volume_group(registered["id"], volume_id)
-                    else:
-                        mapped = client.map_volume(
-                            registered["id"],
+            if resource_type == "POWERMAX_STORAGE_GROUP":
+                settings = equipment_settings(storage)
+                with PowerMaxClient(
+                    storage.management_address or "",
+                    storage.username or "",
+                    decrypt_secret(storage.encrypted_password),
+                    storage.api_port,
+                    storage.verify_ssl,
+                    settings.get("api_version", "100"),
+                ) as client:
+                    client.symmetrix_id = settings["symmetrix_id"]
+                    port_group_id = self.request["volume"].get(
+                        "powermax_port_group_id"
+                    ) or settings.get("default_port_group_id")
+                    for host in self.context["hosts"]:
+                        host_settings = equipment_settings(host)
+                        mapped = client.ensure_masking_view(
                             volume_id,
-                            self.request["volume"].get("logical_unit_number"),
+                            host.name,
+                            [wwn.value for wwn in host.wwns if wwn.role == "INITIATOR"],
+                            port_group_id or "",
+                            {
+                                **self.request["volume"],
+                                "powermax_host_id": host_settings.get("powermax_host_id"),
+                            },
                         )
-                    mappings.append({"host": host.name, "host_id": registered["id"], **mapped})
+                        mappings.append({"host": host.name, **mapped})
+            else:
+                with PowerStoreClient(
+                    storage.management_address or "",
+                    storage.username or "",
+                    decrypt_secret(storage.encrypted_password),
+                    storage.api_port,
+                    storage.verify_ssl,
+                ) as client:
+                    for host in self.context["hosts"]:
+                        settings = equipment_settings(host)
+                        registered = client.ensure_host(
+                            host.name,
+                            settings.get("os_type", "Linux"),
+                            [wwn.value for wwn in host.wwns if wwn.role == "INITIATOR"],
+                            settings.get("powerstore_host_id"),
+                        )
+                        if resource_type == "VOLUME_GROUP":
+                            mapped = client.map_volume_group(registered["id"], volume_id)
+                        else:
+                            mapped = client.map_volume(
+                                registered["id"],
+                                volume_id,
+                                self.request["volume"].get("logical_unit_number"),
+                            )
+                        mappings.append({"host": host.name, "host_id": registered["id"], **mapped})
         self.context["mappings"] = mappings
         return f"LUN apresentada a {len(mappings)} host(s)", {"mappings": mappings}
 
     def _zone(self) -> tuple[str, dict[str, Any]]:
-        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
-            return "Zoning não aplicável ao Storage Group PowerMax", {"skipped": True}
         if not self.request["zoning"]["enabled"]:
             return "Zoning desabilitado pela solicitação", {"skipped": True}
         storage: Equipment = self.context["storage"]
@@ -401,20 +450,35 @@ class WorkflowRunner:
                 ppdm.verify_ssl,
             ) as client:
                 if options["mode"] == "CREATE_POLICY":
-                    policy = client.create_powerstore_policy(options)
+                    policy_options = {
+                        **options,
+                        "asset_type": (
+                            "POWERMAX_BLOCK"
+                            if self.request["volume"].get("resource_type")
+                            == "POWERMAX_STORAGE_GROUP"
+                            else "POWERSTORE_BLOCK"
+                        ),
+                    }
+                    policy = client.create_powerstore_policy(policy_options)
                     policy_id = policy["id"]
                 else:
                     policy_id = options["policy_id"]
                 settings = get_settings()
-                asset_name = (
-                    self.request["volume"].get("name")
-                    or self.request["volume"].get("group_name")
+                asset_name = self.request["volume"].get("name") or self.request["volume"].get(
+                    "group_name"
                 )
-                asset = client.wait_for_powerstore_asset(
-                    asset_name,
-                    timeout=settings.ppdm_discovery_timeout,
-                    interval=settings.ppdm_discovery_interval,
-                )
+                if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
+                    asset = client.wait_for_block_asset(
+                        asset_name,
+                        timeout=settings.ppdm_discovery_timeout,
+                        interval=settings.ppdm_discovery_interval,
+                    )
+                else:
+                    asset = client.wait_for_powerstore_asset(
+                        asset_name,
+                        timeout=settings.ppdm_discovery_timeout,
+                        interval=settings.ppdm_discovery_interval,
+                    )
                 assignment = client.assign_asset(policy_id, asset["id"])
                 result = {
                     "policy_id": policy_id,

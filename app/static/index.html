@@ -140,6 +140,8 @@
                   <label>Prefixo dos volumes<input id="powermaxVolumePrefix" placeholder="APP_DATA" pattern="[A-Za-z0-9_.-]+" /></label>
                   <label>SRP ID<input id="powermaxSrp" placeholder="SRP_1" /></label>
                   <label>SLO ID<input id="powermaxSlo" placeholder="Diamond" /></label>
+                  <label>Port Group PowerMax<select id="powermaxPortGroup"><option value="">Sincronize o PowerMax</option></select></label>
+                  <label>Prefixo da Masking View<input id="powermaxMaskingViewPrefix" placeholder="APP_MV" pattern="[A-Za-z0-9_.-]+" /></label>
                   <label>Emulação<select id="powermaxEmulation"><option>FBA</option><option>CKD</option></select></label>
                 </div>
               </div>
@@ -230,10 +232,12 @@
           <label class="brocade-setting hidden">Geração FOS<select id="equipmentFos"><option>9.1</option><option>9.2</option></select></label>
           <label class="host-setting hidden">Sistema operacional<select id="equipmentOs"><option>Linux</option><option>Windows</option><option>ESXi</option><option>AIX</option><option>HP-UX</option><option>Solaris</option></select></label>
           <label class="host-setting hidden">PowerStore host ID<input id="equipmentHostId" placeholder="Opcional" /></label>
+          <label class="host-setting hidden">PowerMax host ID<input id="equipmentPowermaxHostId" placeholder="Opcional" /></label>
           <label class="powermax-setting hidden">Symmetrix ID<input id="equipmentSymmetrixId" placeholder="000123456789" /></label>
           <label class="powermax-setting hidden">Versão da API<input id="equipmentApiVersion" value="100" placeholder="100 ou 92" /></label>
           <label class="powermax-setting hidden">SRP padrão<input id="equipmentDefaultSrp" placeholder="SRP_1" /></label>
           <label class="powermax-setting hidden">SLO padrão<input id="equipmentDefaultSlo" placeholder="Diamond" /></label>
+          <label class="powermax-setting hidden">Port Group padrão<input id="equipmentDefaultPortGroup" placeholder="PG_PROD" /></label>
         </div>
         <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
         <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>
