@@ -27,6 +27,12 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 - `POST /api/rest/volume_group/{id}/attach` for native group mapping; older arrays fall back to individual member mappings.
 - `GET /api/rest/appliance`, `/fc_port`, `/protection_policy` and `/performance_policy`
 
+## PowerMax
+
+- `GET /api/integrations/powermax/{id}/options` discovers the configured Symmetrix storage groups.
+- Native provisioning uses `POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrixId}/storagegroup`.
+- The request supports `storageGroupId`, `srpId`, SLO, emulation, capacity, count and version-specific `raw_overrides`.
+
 ## PPDM
 
 - Login: `POST /api/v2/login`, then use `access_token` as a Bearer token.

@@ -13,6 +13,7 @@ def utcnow() -> datetime:
 
 class EquipmentType(str, enum.Enum):
     POWERSTORE = "POWERSTORE"
+    POWERMAX = "POWERMAX"
     PPDM = "PPDM"
     BROCADE = "BROCADE"
     HOST = "HOST"

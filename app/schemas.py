@@ -39,7 +39,7 @@ class WWNRead(WWNInput):
 
 class EquipmentCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
-    type: Literal["POWERSTORE", "PPDM", "BROCADE", "HOST"]
+    type: Literal["POWERSTORE", "POWERMAX", "PPDM", "BROCADE", "HOST"]
     management_address: str | None = Field(default=None, max_length=255)
     api_port: int | None = Field(default=None, ge=1, le=65535)
     username: str | None = Field(default=None, max_length=255)
@@ -52,7 +52,7 @@ class EquipmentCreate(BaseModel):
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
             raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
-        if self.type in {"POWERSTORE", "PPDM", "BROCADE"} and not self.username:
+        if self.type in {"POWERSTORE", "POWERMAX", "PPDM", "BROCADE"} and not self.username:
             raise ValueError("usuário de API é obrigatório para este tipo")
         return self
 
@@ -86,11 +86,17 @@ class VolumeOptions(BaseModel):
     name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int | None = Field(default=None, ge=1, le=65536)
     description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
-    resource_type: Literal["VOLUME", "VOLUME_GROUP"] = "VOLUME"
+    resource_type: Literal["VOLUME", "VOLUME_GROUP", "POWERMAX_STORAGE_GROUP"] = "VOLUME"
     group_name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     group_description: str | None = Field(default=None, max_length=256)
     members: list[VolumeMemberOptions] = Field(default_factory=list, max_length=128)
     write_order_consistent: bool = True
+    volume_count: int = Field(default=1, ge=1, le=4096)
+    volume_prefix: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
+    srp_id: str | None = Field(default=None, max_length=128)
+    slo_id: str | None = Field(default=None, max_length=128)
+    emulation: Literal["FBA", "CKD"] = "FBA"
+    raw_overrides: dict[str, Any] = Field(default_factory=dict)
     appliance_id: str | None = None
     performance_policy_id: str | None = None
     protection_policy_id: str | None = None
@@ -106,6 +112,11 @@ class VolumeOptions(BaseModel):
             names = [member.name.casefold() for member in self.members]
             if len(names) != len(set(names)):
                 raise ValueError("members não pode conter nomes repetidos")
+        elif self.resource_type == "POWERMAX_STORAGE_GROUP":
+            if not self.name or self.size_gib is None:
+                raise ValueError("name e size_gib são obrigatórios para POWERMAX_STORAGE_GROUP")
+            if self.members or self.group_name:
+                raise ValueError("members e group_name não são usados em POWERMAX_STORAGE_GROUP")
         else:
             if not self.name or self.size_gib is None:
                 raise ValueError("name e size_gib são obrigatórios para VOLUME")
@@ -186,7 +197,7 @@ class BackupOptions(BaseModel):
 class ProvisionRequest(BaseModel):
     storage_id: int
     ppdm_id: int | None = None
-    host_ids: list[int] = Field(min_length=1)
+    host_ids: list[int] = Field(default_factory=list)
     brocade_ids: list[int] = Field(default_factory=list)
     volume: VolumeOptions
     zoning: ZoningOptions = Field(default_factory=ZoningOptions)
@@ -195,8 +206,14 @@ class ProvisionRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_integrations(self):
-        if self.zoning.enabled and not self.brocade_ids:
+        storage_resource = self.volume.resource_type
+        hostless = storage_resource == "POWERMAX_STORAGE_GROUP"
+        if not hostless and not self.host_ids:
+            raise ValueError("selecione ao menos um host para este recurso block")
+        if self.zoning.enabled and not self.brocade_ids and not hostless:
             raise ValueError("selecione ao menos um Brocade quando o zoning estiver habilitado")
+        if hostless and self.zoning.enabled:
+            raise ValueError("zoning deve ser desabilitado para POWERMAX_STORAGE_GROUP")
         if self.backup.mode != "NONE" and self.ppdm_id is None:
             raise ValueError("selecione um PPDM quando o backup estiver habilitado")
         return self

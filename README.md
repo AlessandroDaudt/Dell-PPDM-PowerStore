@@ -99,6 +99,7 @@ stateDiagram-v2
 - Live retrieval of PPDM versions, Data Domains, preferred interfaces, storage units and PowerStore policies.
 - Creation of PPDM v2 or v3 policies, or assignment to an existing policy.
 - Native PowerStore individual-volume and block-volume-group provisioning, including group mapping when supported by PowerStoreOS.
+- Native PowerMax Storage Group provisioning through Unisphere REST, with array, SRP, SLO and volume-count parameters.
 - Hourly, daily, weekly or monthly schedules; windows, retention, Retention Lock, consistency and backup level.
 - Live inspection of existing policy objectives; Snapshot, Replication and Cloud Tier can be required and defined through version-specific JSON without silently ignoring incomplete selections.
 - End-to-end dry-run, live execution and detailed per-step history.

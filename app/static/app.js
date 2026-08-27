@@ -130,15 +130,16 @@ function renderInventory() {
 }
 
 function optionList(type, placeholder = "Selecione") {
-  return `<option value="">${placeholder}</option>` + state.equipment.filter((item) => item.type === type)
-    .map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("");
+  const types = Array.isArray(type) ? type : [type];
+  return `<option value="">${placeholder}</option>` + state.equipment.filter((item) => types.includes(item.type))
+    .map((item) => `<option value="${item.id}" data-type="${item.type}">${escapeHtml(item.name)}${types.length > 1 ? ` · ${item.type}` : ""}</option>`).join("");
 }
 
 function renderProvisionChoices() {
   const keep = (element) => element.value;
   const storage = $("#storageId"), ppdm = $("#ppdmId");
   const storageValue = keep(storage), ppdmValue = keep(ppdm);
-  storage.innerHTML = optionList("POWERSTORE"); ppdm.innerHTML = optionList("PPDM");
+  storage.innerHTML = optionList(["POWERSTORE", "POWERMAX"]); ppdm.innerHTML = optionList("PPDM");
   storage.value = storageValue; ppdm.value = ppdmValue;
   const choices = (type, cssName) => {
     const items = state.equipment.filter((item) => item.type === type);
@@ -150,10 +151,28 @@ function renderProvisionChoices() {
 
 function updateResourceType() {
   const group = $("#resourceType").value === "VOLUME_GROUP";
+  const powermax = $("#resourceType").value === "POWERMAX_STORAGE_GROUP";
   $("#volumeGroupFields").classList.toggle("hidden", !group);
+  $("#powermaxFields").classList.toggle("hidden", !powermax);
   $("#volumeName").required = !group;
+  $("#volumeSize").required = !group;
   $("#groupName").required = group;
   $("#groupMembers").required = group;
+  $("#zoningEnabled").checked = !powermax;
+  $("#zoningEnabled").disabled = powermax;
+  $("#zoningEnabled").closest(".inline-options").classList.toggle("disabled-section", powermax);
+  $("#hostChoices").closest(".selection-columns").classList.toggle("disabled-section", powermax);
+  if (powermax && $("#backupMode").value !== "NONE") {
+    $("#backupMode").value = "NONE";
+    updateBackupMode();
+  }
+}
+
+function updateStorageResourceDefaults() {
+  const selected = $("#storageId").selectedOptions[0];
+  if (selected?.dataset.type === "POWERMAX") $("#resourceType").value = "POWERMAX_STORAGE_GROUP";
+  else if ($("#resourceType").value === "POWERMAX_STORAGE_GROUP") $("#resourceType").value = "VOLUME";
+  updateResourceType();
 }
 
 function resetEquipmentForm() {
@@ -172,6 +191,7 @@ function updateEquipmentFields() {
   $$(".network-field").forEach((field) => field.classList.toggle("hidden", type === "HOST"));
   $$(".brocade-setting").forEach((field) => field.classList.toggle("hidden", type !== "BROCADE"));
   $$(".host-setting").forEach((field) => field.classList.toggle("hidden", type !== "HOST"));
+  $$(".powermax-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERMAX"));
   if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : "443";
 }
 
@@ -192,6 +212,10 @@ function openEquipment(item = null) {
     $("#equipmentFos").value = item.settings.fos_generation || "9.1";
     $("#equipmentOs").value = item.settings.os_type || "Linux";
     $("#equipmentHostId").value = item.settings.powerstore_host_id || "";
+    $("#equipmentSymmetrixId").value = item.settings.symmetrix_id || "";
+    $("#equipmentApiVersion").value = item.settings.api_version || "100";
+    $("#equipmentDefaultSrp").value = item.settings.default_srp_id || "";
+    $("#equipmentDefaultSlo").value = item.settings.default_slo_id || "";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -212,7 +236,12 @@ async function saveEquipment(event) {
   const settings = type === "BROCADE" ? {
     fabric: $("#equipmentFabric").value.toUpperCase(), fid: Number($("#equipmentFid").value),
     active_config: $("#equipmentActiveConfig").value, fos_generation: $("#equipmentFos").value,
-  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null } : {};
+  } : type === "HOST" ? { os_type: $("#equipmentOs").value, powerstore_host_id: $("#equipmentHostId").value || null } : type === "POWERMAX" ? {
+    symmetrix_id: $("#equipmentSymmetrixId").value || null,
+    api_version: $("#equipmentApiVersion").value || "100",
+    default_srp_id: $("#equipmentDefaultSrp").value || null,
+    default_slo_id: $("#equipmentDefaultSlo").value || null,
+  } : {};
   const body = {
     type, name: $("#equipmentName").value, management_address: $("#equipmentAddress").value || null,
     api_port: $("#equipmentPort").value ? Number($("#equipmentPort").value) : null,
@@ -368,6 +397,11 @@ async function submitProvision(event) {
       resource_type: resourceType, group_name: resourceType === "VOLUME_GROUP" ? $("#groupName").value : null,
       group_description: resourceType === "VOLUME_GROUP" ? $("#groupDescription").value || null : null,
       members, write_order_consistent: true,
+      volume_count: resourceType === "POWERMAX_STORAGE_GROUP" ? Number($("#powermaxVolumeCount").value) : 1,
+      volume_prefix: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxVolumePrefix").value || null : null,
+      srp_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxSrp").value || null : null,
+      slo_id: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxSlo").value || null : null,
+      emulation: resourceType === "POWERMAX_STORAGE_GROUP" ? $("#powermaxEmulation").value : "FBA",
       appliance_id: $("#applianceId").value || null, performance_policy_id: $("#performancePolicy").value || null,
       protection_policy_id: $("#localProtectionPolicy").value || null, logical_unit_number: $("#lunNumber").value ? Number($("#lunNumber").value) : null,
     },
@@ -442,6 +476,7 @@ function bindEvents() {
   $$(".filter").forEach((button) => button.addEventListener("click", () => { state.inventoryFilter = button.dataset.filter; $$(".filter").forEach((item) => item.classList.toggle("active", item === button)); renderInventory(); }));
   $("#syncPowerStore").addEventListener("click", syncPowerStore);
   $("#resourceType").addEventListener("change", updateResourceType);
+  $("#storageId").addEventListener("change", updateStorageResourceDefaults);
   $("#syncPpdm").addEventListener("click", syncPpdm);
   $("#dataDomain").addEventListener("change", updateDdDependentOptions);
   $("#backupMode").addEventListener("change", updateBackupMode);

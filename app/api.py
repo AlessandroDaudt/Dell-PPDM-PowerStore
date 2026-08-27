@@ -21,6 +21,7 @@ from app.schemas import (
     WWNRead,
 )
 from app.services.orchestrator import create_workflow, equipment_settings, run_workflow
+from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.ppdm import PPDMClient
 
@@ -258,6 +259,17 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
             equipment.verify_ssl,
         ) as client:
             return client.test_connection()
+    if equipment.type == "POWERMAX":
+        settings = equipment_settings(equipment)
+        with PowerMaxClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            password,
+            equipment.api_port,
+            equipment.verify_ssl,
+            settings.get("api_version", "100"),
+        ) as client:
+            return client.test_connection()
     if equipment.type == "PPDM":
         with PPDMClient(
             equipment.management_address or "",
@@ -289,6 +301,26 @@ def powerstore_options(equipment_id: int, _: AuthUser, db: DbSession):
         equipment.verify_ssl,
     ) as client:
         return client.get_options()
+
+
+@router.get("/integrations/powermax/{equipment_id}/options")
+def powermax_options(equipment_id: int, _: AuthUser, db: DbSession):
+    equipment = _get_equipment(db, equipment_id)
+    if equipment.type != "POWERMAX":
+        raise HTTPException(status_code=400, detail="equipamento não é PowerMax")
+    settings = equipment_settings(equipment)
+    symmetrix_id = settings.get("symmetrix_id")
+    if not symmetrix_id:
+        raise HTTPException(status_code=400, detail="symmetrix_id não configurado no PowerMax")
+    with PowerMaxClient(
+        equipment.management_address or "",
+        equipment.username or "",
+        decrypt_secret(equipment.encrypted_password),
+        equipment.api_port,
+        equipment.verify_ssl,
+        settings.get("api_version", "100"),
+    ) as client:
+        return client.get_options(symmetrix_id)
 
 
 @router.get("/integrations/ppdm/{equipment_id}/options")

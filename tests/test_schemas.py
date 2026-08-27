@@ -77,3 +77,21 @@ def test_powerstore_volume_group_requires_group_members():
 
     with pytest.raises(ValidationError):
         VolumeOptions(resource_type="VOLUME_GROUP", group_name="APP-GRP")
+
+
+def test_powermax_storage_group_is_hostless_when_zoning_is_disabled():
+    request = ProvisionRequest.model_validate(
+        {
+            "storage_id": 10,
+            "host_ids": [],
+            "volume": {
+                "resource_type": "POWERMAX_STORAGE_GROUP",
+                "name": "APP_SG",
+                "size_gib": 100,
+                "volume_count": 2,
+            },
+            "zoning": {"enabled": False},
+            "backup": {"mode": "NONE"},
+        }
+    )
+    assert request.volume.resource_type == "POWERMAX_STORAGE_GROUP"

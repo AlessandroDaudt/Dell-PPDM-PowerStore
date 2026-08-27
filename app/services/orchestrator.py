@@ -20,6 +20,7 @@ from app.models import (
     utcnow,
 )
 from app.services.ansible_runner import run_brocade_zoning
+from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.ppdm import PPDMClient
 
@@ -121,7 +122,13 @@ class WorkflowRunner:
             raise
 
     def _validate(self) -> tuple[str, dict[str, Any]]:
-        storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE)
+        resource_type = self.request["volume"].get("resource_type", "VOLUME")
+        storage_type = (
+            EquipmentType.POWERMAX
+            if resource_type == "POWERMAX_STORAGE_GROUP"
+            else EquipmentType.POWERSTORE
+        )
+        storage = self._get_equipment(self.request["storage_id"], storage_type)
         hosts = [
             self._get_equipment(item, EquipmentType.HOST) for item in self.request["host_ids"]
         ]
@@ -137,7 +144,11 @@ class WorkflowRunner:
             initiators = [wwn for wwn in host.wwns if wwn.role == "INITIATOR"]
             if not initiators:
                 raise ValueError(f"host {host.name} não possui WWN iniciador")
-        if self.request["zoning"]["enabled"]:
+        if resource_type == "POWERMAX_STORAGE_GROUP":
+            settings = equipment_settings(storage)
+            if not settings.get("symmetrix_id"):
+                raise ValueError(f"PowerMax {storage.name} não possui symmetrix_id configurado")
+        elif self.request["zoning"]["enabled"]:
             targets = [wwn for wwn in storage.wwns if wwn.role == "TARGET"]
             if not targets:
                 raise ValueError(f"PowerStore {storage.name} não possui WWN target")
@@ -164,8 +175,20 @@ class WorkflowRunner:
         storage: Equipment = self.context["storage"]
         volume = self.request["volume"]
         is_group = volume.get("resource_type") == "VOLUME_GROUP"
+        is_powermax_group = volume.get("resource_type") == "POWERMAX_STORAGE_GROUP"
         if self.workflow.dry_run:
-            if is_group:
+            if is_powermax_group:
+                created = {
+                    "id": f"dryrun-powermax-sg-{self.workflow.id}",
+                    "name": volume["name"],
+                    "planned_request": "POST /univmax/restapi/{version}/sloprovisioning/symmetrix/{symmetrix_id}/storagegroup",
+                    "payload": {
+                        "storageGroupId": volume["name"],
+                        "num_of_vols": volume["volume_count"],
+                        "volume_size": volume["size_gib"],
+                    },
+                }
+            elif is_group:
                 created = {
                     "id": f"dryrun-volume-group-{self.workflow.id}",
                     "name": volume["group_name"],
@@ -193,19 +216,32 @@ class WorkflowRunner:
                     "planned_request": "POST /api/rest/volume",
                 }
         else:
-            with PowerStoreClient(
-                storage.management_address or "",
-                storage.username or "",
-                decrypt_secret(storage.encrypted_password),
-                storage.api_port,
-                storage.verify_ssl,
-            ) as client:
-                if is_group:
-                    created = client.create_volume_group(volume)
-                else:
-                    created = client.create_volume(volume)
-                    full_volume = client.get_volume(created["id"])
-                    created = {**created, **full_volume}
+            if is_powermax_group:
+                settings = equipment_settings(storage)
+                with PowerMaxClient(
+                    storage.management_address or "",
+                    storage.username or "",
+                    decrypt_secret(storage.encrypted_password),
+                    storage.api_port,
+                    storage.verify_ssl,
+                    settings.get("api_version", "100"),
+                ) as client:
+                    client.symmetrix_id = settings["symmetrix_id"]
+                    created = client.ensure_storage_group(volume)
+            else:
+                with PowerStoreClient(
+                    storage.management_address or "",
+                    storage.username or "",
+                    decrypt_secret(storage.encrypted_password),
+                    storage.api_port,
+                    storage.verify_ssl,
+                ) as client:
+                    if is_group:
+                        created = client.create_volume_group(volume)
+                    else:
+                        created = client.create_volume(volume)
+                        full_volume = client.get_volume(created["id"])
+                        created = {**created, **full_volume}
         self.workflow.volume_id = str(created["id"])
         self.workflow.volume_wwn = created.get("wwn")
         self.db.commit()
@@ -214,6 +250,8 @@ class WorkflowRunner:
         return f"LUN {resource_name} preparada", created
 
     def _map_hosts(self) -> tuple[str, dict[str, Any]]:
+        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
+            return "Apresentação de hosts não aplicável ao Storage Group PowerMax", {"skipped": True}
         storage: Equipment = self.context["storage"]
         volume_id = self.context["volume"]["id"]
         mappings: list[dict[str, Any]] = []
@@ -263,6 +301,8 @@ class WorkflowRunner:
         return f"LUN apresentada a {len(mappings)} host(s)", {"mappings": mappings}
 
     def _zone(self) -> tuple[str, dict[str, Any]]:
+        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
+            return "Zoning não aplicável ao Storage Group PowerMax", {"skipped": True}
         if not self.request["zoning"]["enabled"]:
             return "Zoning desabilitado pela solicitação", {"skipped": True}
         storage: Equipment = self.context["storage"]
@@ -398,17 +438,30 @@ class WorkflowRunner:
             }
             return "Plano validado sem alterar os equipamentos", details
         storage: Equipment = self.context["storage"]
-        with PowerStoreClient(
-            storage.management_address or "",
-            storage.username or "",
-            decrypt_secret(storage.encrypted_password),
-            storage.api_port,
-            storage.verify_ssl,
-        ) as client:
-            if self.request["volume"].get("resource_type") == "VOLUME_GROUP":
-                volume = client.get_volume_group(self.workflow.volume_id or "")
-            else:
-                volume = client.get_volume(self.workflow.volume_id or "")
+        if self.request["volume"].get("resource_type") == "POWERMAX_STORAGE_GROUP":
+            settings = equipment_settings(storage)
+            with PowerMaxClient(
+                storage.management_address or "",
+                storage.username or "",
+                decrypt_secret(storage.encrypted_password),
+                storage.api_port,
+                storage.verify_ssl,
+                settings.get("api_version", "100"),
+            ) as client:
+                client.symmetrix_id = settings["symmetrix_id"]
+                volume = client.get_storage_group(self.workflow.volume_id or "")
+        else:
+            with PowerStoreClient(
+                storage.management_address or "",
+                storage.username or "",
+                decrypt_secret(storage.encrypted_password),
+                storage.api_port,
+                storage.verify_ssl,
+            ) as client:
+                if self.request["volume"].get("resource_type") == "VOLUME_GROUP":
+                    volume = client.get_volume_group(self.workflow.volume_id or "")
+                else:
+                    volume = client.get_volume(self.workflow.volume_id or "")
         if not volume.get("id"):
             raise ValueError("PowerStore não retornou o volume na verificação final")
         return (

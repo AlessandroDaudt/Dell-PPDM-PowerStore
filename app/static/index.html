@@ -105,7 +105,7 @@
 
         <section id="page-inventory" class="page">
           <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
-          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
@@ -121,7 +121,7 @@
                 <div class="section-heading"><div><p class="eyebrow">CAPACIDADE</p><h3>LUN no PowerStore</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sincronizar opções</button></div>
                 <div class="form-grid three">
                   <label>PowerStore<select id="storageId" required><option value="">Selecione</option></select></label>
-                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option></select></label>
+                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option><option value="POWERMAX_STORAGE_GROUP">Storage Group PowerMax</option></select></label>
                   <label>Nome da LUN<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
                   <label>Tamanho (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
                   <label>Appliance<select id="applianceId"><option value="">Seleção automática</option></select></label>
@@ -134,6 +134,13 @@
                   <label>Nome do grupo<input id="groupName" placeholder="PRD_ORACLE_GRP" pattern="[A-Za-z0-9_.-]+" /></label>
                   <label>Descrição do grupo<input id="groupDescription" placeholder="Grupo write-order consistent" /></label>
                   <label class="span-two">Volumes membros (JSON)<textarea id="groupMembers" rows="4" placeholder='[{"name":"PRD_DATA_01","size_gib":100},{"name":"PRD_LOG_01","size_gib":50}]'></textarea><small>Cada membro deve informar name e size_gib.</small></label>
+                </div>
+                <div id="powermaxFields" class="form-grid three hidden">
+                  <label>Quantidade de volumes<input id="powermaxVolumeCount" type="number" min="1" max="4096" value="1" /></label>
+                  <label>Prefixo dos volumes<input id="powermaxVolumePrefix" placeholder="APP_DATA" pattern="[A-Za-z0-9_.-]+" /></label>
+                  <label>SRP ID<input id="powermaxSrp" placeholder="SRP_1" /></label>
+                  <label>SLO ID<input id="powermaxSlo" placeholder="Diamond" /></label>
+                  <label>Emulação<select id="powermaxEmulation"><option>FBA</option><option>CKD</option></select></label>
                 </div>
               </div>
             </section>
@@ -209,7 +216,7 @@
         <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
         <input id="equipmentId" type="hidden" />
         <div class="form-grid two">
-          <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+          <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
           <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
           <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
           <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>
@@ -223,6 +230,10 @@
           <label class="brocade-setting hidden">Geração FOS<select id="equipmentFos"><option>9.1</option><option>9.2</option></select></label>
           <label class="host-setting hidden">Sistema operacional<select id="equipmentOs"><option>Linux</option><option>Windows</option><option>ESXi</option><option>AIX</option><option>HP-UX</option><option>Solaris</option></select></label>
           <label class="host-setting hidden">PowerStore host ID<input id="equipmentHostId" placeholder="Opcional" /></label>
+          <label class="powermax-setting hidden">Symmetrix ID<input id="equipmentSymmetrixId" placeholder="000123456789" /></label>
+          <label class="powermax-setting hidden">Versão da API<input id="equipmentApiVersion" value="100" placeholder="100 ou 92" /></label>
+          <label class="powermax-setting hidden">SRP padrão<input id="equipmentDefaultSrp" placeholder="SRP_1" /></label>
+          <label class="powermax-setting hidden">SLO padrão<input id="equipmentDefaultSlo" placeholder="Diamond" /></label>
         </div>
         <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
         <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>
