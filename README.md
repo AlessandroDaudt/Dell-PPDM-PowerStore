@@ -184,6 +184,7 @@ tests/                      unit tests with mocked APIs
 ## Documentation
 
 - [Architecture and decisions](docs/ARCHITECTURE.md)
+- [Implementation stages and branches](docs/IMPLEMENTATION_STAGES.md)
 - [Operations runbook](docs/OPERATIONS.md)
 - [API and integrations](docs/API.md)
 - [Security](docs/SECURITY.md)
