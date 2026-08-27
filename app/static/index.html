@@ -121,6 +121,7 @@
                 <div class="section-heading"><div><p class="eyebrow">CAPACIDADE</p><h3>LUN no PowerStore</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sincronizar opções</button></div>
                 <div class="form-grid three">
                   <label>PowerStore<select id="storageId" required><option value="">Selecione</option></select></label>
+                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option></select></label>
                   <label>Nome da LUN<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
                   <label>Tamanho (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
                   <label>Appliance<select id="applianceId"><option value="">Seleção automática</option></select></label>
@@ -128,6 +129,11 @@
                   <label>Protection policy local<select id="localProtectionPolicy"><option value="">Sem política local</option></select></label>
                   <label>LUN ID desejado<input id="lunNumber" type="number" min="0" max="16383" placeholder="Automático" /></label>
                   <label class="span-two">Descrição<input id="volumeDescription" value="Criado pelo SANFlow Dell" /></label>
+                </div>
+                <div id="volumeGroupFields" class="form-grid two hidden">
+                  <label>Nome do grupo<input id="groupName" placeholder="PRD_ORACLE_GRP" pattern="[A-Za-z0-9_.-]+" /></label>
+                  <label>Descrição do grupo<input id="groupDescription" placeholder="Grupo write-order consistent" /></label>
+                  <label class="span-two">Volumes membros (JSON)<textarea id="groupMembers" rows="4" placeholder='[{"name":"PRD_DATA_01","size_gib":100},{"name":"PRD_LOG_01","size_gib":50}]'></textarea><small>Cada membro deve informar name e size_gib.</small></label>
                 </div>
               </div>
             </section>

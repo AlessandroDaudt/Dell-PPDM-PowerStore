@@ -21,8 +21,10 @@ The interactive OpenAPI specification is available at `http://<sanflow>:8080/doc
 The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a mutation to capture `DELL-EMC-TOKEN`. The main operations are:
 
 - `POST /api/rest/volume`
+- `POST /api/rest/volume_group`, followed by `POST /api/rest/volume` with `volume_group_id` for block volume groups.
 - `GET/POST /api/rest/host`
 - `GET /api/rest/host_volume_mapping` and `POST /api/rest/host/{id}/attach`
+- `POST /api/rest/volume_group/{id}/attach` for native group mapping; older arrays fall back to individual member mappings.
 - `GET /api/rest/appliance`, `/fc_port`, `/protection_policy` and `/performance_policy`
 
 ## PPDM

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import BackupOptions, ProvisionRequest, normalize_wwn
+from app.schemas import BackupOptions, ProvisionRequest, VolumeOptions, normalize_wwn
 
 
 def test_normalize_wwn_accepts_common_formats():
@@ -65,3 +65,15 @@ def test_dry_run_payload_can_disable_optional_integrations():
         }
     )
     assert request.dry_run is True
+
+
+def test_powerstore_volume_group_requires_group_members():
+    options = VolumeOptions(
+        resource_type="VOLUME_GROUP",
+        group_name="APP-GRP",
+        members=[{"name": "APP-01", "size_gib": 10}],
+    )
+    assert options.members[0].name == "APP-01"
+
+    with pytest.raises(ValidationError):
+        VolumeOptions(resource_type="VOLUME_GROUP", group_name="APP-GRP")

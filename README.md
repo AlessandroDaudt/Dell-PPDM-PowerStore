@@ -1,6 +1,6 @@
 # SANFlow Dell
 
-Web control plane for automating, in one workflow, Dell PowerStore LUN creation, presentation to physical hosts, Fibre Channel zoning on Brocade switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
+Web control plane for automating, in one workflow, Dell PowerStore volumes or block volume groups, presentation to physical hosts, Fibre Channel zoning on Brocade switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
 
 > Status: initial release ready for lab and acceptance testing. **Dry-run is the default.** Before the first production use, validate the exact PowerStoreOS, PPDM and Fabric OS versions in E-Lab Navigator and run a controlled change.
 
@@ -98,6 +98,7 @@ stateDiagram-v2
 - Live retrieval of PowerStore appliances and policies.
 - Live retrieval of PPDM versions, Data Domains, preferred interfaces, storage units and PowerStore policies.
 - Creation of PPDM v2 or v3 policies, or assignment to an existing policy.
+- Native PowerStore individual-volume and block-volume-group provisioning, including group mapping when supported by PowerStoreOS.
 - Hourly, daily, weekly or monthly schedules; windows, retention, Retention Lock, consistency and backup level.
 - Live inspection of existing policy objectives; Snapshot, Replication and Cloud Tier can be required and defined through version-specific JSON without silently ignoring incomplete selections.
 - End-to-end dry-run, live execution and detailed per-step history.

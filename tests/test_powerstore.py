@@ -57,3 +57,38 @@ def test_powerstore_reuses_existing_mapping():
     with PowerStoreClient("ps", "u", "p", transport=httpx.MockTransport(handler)) as client:
         result = client.map_volume("h1", "v1")
     assert result["already_exists"] is True
+
+
+def test_powerstore_creates_volume_group_with_native_members_and_attach():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.url.path == "/api/rest/cluster":
+            return httpx.Response(
+                200, json=[{"id": "cluster-1"}], headers={"DELL-EMC-TOKEN": "csrf-1"}
+            )
+        if request.url.path == "/api/rest/volume_group" and request.method == "POST":
+            return httpx.Response(201, json={"id": "group-1", "name": "APP-GRP"})
+        if request.url.path == "/api/rest/volume" and request.method == "POST":
+            body = request.read()
+            assert b'"volume_group_id":"group-1"' in body
+            return httpx.Response(201, json={"id": "member-1"})
+        if request.url.path == "/api/rest/volume_group/group-1/attach":
+            assert request.method == "POST"
+            return httpx.Response(204)
+        return httpx.Response(404, json={"message": "unexpected"})
+
+    options = {
+        "group_name": "APP-GRP",
+        "group_description": "application group",
+        "members": [{"name": "APP-01", "size_gib": 10}],
+    }
+    with PowerStoreClient("ps", "u", "p", transport=httpx.MockTransport(handler)) as client:
+        group = client.create_volume_group(options)
+        attached = client.map_volume_group("host-1", group["id"])
+
+    assert group["id"] == "group-1"
+    assert group["volumes"][0]["id"] == "member-1"
+    assert attached["volume_group_id"] == "group-1"
+    assert [request.url.path for request in requests].count("/api/rest/cluster") == 1

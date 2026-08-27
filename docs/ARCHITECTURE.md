@@ -52,6 +52,7 @@ erDiagram
 - Inventory names are unique and WWNs are unique within an equipment entry.
 - Existing PowerStore hosts are reused by `powerstore_host_id` or by name.
 - Existing mappings between a host and volume are detected.
+- A PowerStore block group is represented by the array as a `volume_group` and its members are created with `volume_group_id`; group host mapping uses the native group endpoint when available.
 - The playbook reads the defined configuration, does not recreate existing zones and preserves cfg members.
 - PPDM assignment runs after asset discovery. A new run should use an existing policy or a new policy name to avoid duplicates.
 

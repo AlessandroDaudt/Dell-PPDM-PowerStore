@@ -75,14 +75,43 @@ class EquipmentRead(BaseModel):
     updated_at: datetime
 
 
-class VolumeOptions(BaseModel):
+class VolumeMemberOptions(BaseModel):
     name: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int = Field(ge=1, le=65536)
     description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    logical_unit_number: int | None = Field(default=None, ge=0, le=16383)
+
+
+class VolumeOptions(BaseModel):
+    name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
+    size_gib: int | None = Field(default=None, ge=1, le=65536)
+    description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    resource_type: Literal["VOLUME", "VOLUME_GROUP"] = "VOLUME"
+    group_name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
+    group_description: str | None = Field(default=None, max_length=256)
+    members: list[VolumeMemberOptions] = Field(default_factory=list, max_length=128)
+    write_order_consistent: bool = True
     appliance_id: str | None = None
     performance_policy_id: str | None = None
     protection_policy_id: str | None = None
     logical_unit_number: int | None = Field(default=None, ge=0, le=16383)
+
+    @model_validator(mode="after")
+    def validate_resource(self):
+        if self.resource_type == "VOLUME_GROUP":
+            if not self.group_name:
+                raise ValueError("group_name é obrigatório para VOLUME_GROUP")
+            if not self.members:
+                raise ValueError("members é obrigatório para VOLUME_GROUP")
+            names = [member.name.casefold() for member in self.members]
+            if len(names) != len(set(names)):
+                raise ValueError("members não pode conter nomes repetidos")
+        else:
+            if not self.name or self.size_gib is None:
+                raise ValueError("name e size_gib são obrigatórios para VOLUME")
+            if self.group_name or self.members:
+                raise ValueError("group_name e members só podem ser usados em VOLUME_GROUP")
+        return self
 
 
 class ZoningOptions(BaseModel):

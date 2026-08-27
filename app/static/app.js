@@ -148,6 +148,14 @@ function renderProvisionChoices() {
   $("#brocadeChoices").innerHTML = choices("BROCADE", "brocadeChoice");
 }
 
+function updateResourceType() {
+  const group = $("#resourceType").value === "VOLUME_GROUP";
+  $("#volumeGroupFields").classList.toggle("hidden", !group);
+  $("#volumeName").required = !group;
+  $("#groupName").required = group;
+  $("#groupMembers").required = group;
+}
+
 function resetEquipmentForm() {
   $("#equipmentForm").reset();
   $("#equipmentId").value = "";
@@ -345,11 +353,21 @@ async function submitProvision(event) {
   let rawOverrides = {};
   try { rawOverrides = $("#rawOverrides").value.trim() ? JSON.parse($("#rawOverrides").value) : {}; }
   catch (_) { return toast("O payload avançado não é um JSON válido.", true); }
+  const resourceType = $("#resourceType").value;
+  let members = [];
+  if (resourceType === "VOLUME_GROUP") {
+    try { members = JSON.parse($("#groupMembers").value || "[]"); }
+    catch (_) { return toast("A lista de volumes membros não é um JSON válido.", true); }
+  }
   const body = {
     storage_id: Number($("#storageId").value), ppdm_id: $("#ppdmId").value ? Number($("#ppdmId").value) : null,
     host_ids: checkedValues("hostChoice"), brocade_ids: checkedValues("brocadeChoice"), dry_run: $("#dryRun").checked,
     volume: {
-      name: $("#volumeName").value, size_gib: Number($("#volumeSize").value), description: $("#volumeDescription").value,
+      name: resourceType === "VOLUME_GROUP" ? null : $("#volumeName").value,
+      size_gib: resourceType === "VOLUME_GROUP" ? null : Number($("#volumeSize").value), description: $("#volumeDescription").value,
+      resource_type: resourceType, group_name: resourceType === "VOLUME_GROUP" ? $("#groupName").value : null,
+      group_description: resourceType === "VOLUME_GROUP" ? $("#groupDescription").value || null : null,
+      members, write_order_consistent: true,
       appliance_id: $("#applianceId").value || null, performance_policy_id: $("#performancePolicy").value || null,
       protection_policy_id: $("#localProtectionPolicy").value || null, logical_unit_number: $("#lunNumber").value ? Number($("#lunNumber").value) : null,
     },
@@ -423,6 +441,7 @@ function bindEvents() {
   $("#inventoryGrid").addEventListener("click", handleInventoryAction);
   $$(".filter").forEach((button) => button.addEventListener("click", () => { state.inventoryFilter = button.dataset.filter; $$(".filter").forEach((item) => item.classList.toggle("active", item === button)); renderInventory(); }));
   $("#syncPowerStore").addEventListener("click", syncPowerStore);
+  $("#resourceType").addEventListener("change", updateResourceType);
   $("#syncPpdm").addEventListener("click", syncPpdm);
   $("#dataDomain").addEventListener("change", updateDdDependentOptions);
   $("#backupMode").addEventListener("change", updateBackupMode);
@@ -434,7 +453,7 @@ function bindEvents() {
 }
 
 async function bootstrap() {
-  bindEvents(); updateBackupMode();
+  bindEvents(); updateBackupMode(); updateResourceType();
   try { const auth = await api("/api/auth/status"); if (auth.authenticated) { showApp(); await loadAll(); startPolling(); } else showLogin(); }
   catch (_) { showLogin(); }
 }

@@ -84,6 +84,7 @@ class PowerStoreClient:
         result: dict[str, Any] = {}
         for key, path, params in (
             ("appliances", "/api/rest/appliance", {"select": "id,name,service_tag"}),
+            ("volume_groups", "/api/rest/volume_group", {"select": "id,name,description"}),
             ("fc_ports", "/api/rest/fc_port", {"select": "id,name,wwn,link_state"}),
             (
                 "protection_policies",
@@ -111,6 +112,12 @@ class PowerStoreClient:
             result[key] = data if isinstance(data, list) else []
         return result
 
+    @staticmethod
+    def _require_id(data: Any, system: str, method: str, path: str, resource: str) -> dict[str, Any]:
+        if not isinstance(data, dict) or not data.get("id"):
+            raise ExternalAPIError(system, method, path, None, f"resposta sem id de {resource}")
+        return data
+
     def create_volume(self, options: dict[str, Any]) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "name": options["name"],
@@ -120,12 +127,65 @@ class PowerStoreClient:
         for key in ("appliance_id", "performance_policy_id", "protection_policy_id"):
             if options.get(key):
                 payload[key] = options[key]
+        if options.get("volume_group_id"):
+            payload["volume_group_id"] = options["volume_group_id"]
         created = self.request("POST", "/api/rest/volume", json=payload)
-        if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError(
-                "PowerStore", "POST", "/api/rest/volume", None, "resposta sem id do volume"
-            )
-        return created
+        return self._require_id(created, "PowerStore", "POST", "/api/rest/volume", "volume")
+
+    def get_volume_groups(self) -> list[dict[str, Any]]:
+        data = self.request(
+            "GET", "/api/rest/volume_group", params={"select": "id,name,description,volumes"}
+        )
+        return data if isinstance(data, list) else []
+
+    def get_volume_group(self, group_id: str) -> dict[str, Any]:
+        data = self.request(
+            "GET", f"/api/rest/volume_group/{group_id}",
+            params={"select": "id,name,description,volumes,type"},
+        )
+        return data if isinstance(data, dict) else {}
+
+    def create_volume_group(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Create a PowerStore volume group and its member volumes natively."""
+        group_payload: dict[str, Any] = {
+            "name": options["group_name"],
+            "description": options.get("group_description") or options.get("description", ""),
+            "is_write_order_consistent": options.get("write_order_consistent", True),
+        }
+        if options.get("protection_policy_id"):
+            group_payload["protection_policy_id"] = options["protection_policy_id"]
+        created = self._require_id(
+            self.request("POST", "/api/rest/volume_group", json=group_payload),
+            "PowerStore", "POST", "/api/rest/volume_group", "grupo de volumes",
+        )
+        members: list[dict[str, Any]] = []
+        for member in options.get("members", []):
+            members.append(self.create_volume({**member, "volume_group_id": created["id"]}))
+        return {**created, "type": "Primary", "volumes": members}
+
+    def map_volume_group(self, host_id: str, volume_group_id: str) -> dict[str, Any]:
+        """Attach a volume group through the native PowerStore group operation."""
+        path = f"/api/rest/volume_group/{volume_group_id}/attach"
+        try:
+            created = self.request("POST", path, json={"host_id": host_id})
+        except ExternalAPIError as exc:
+            if exc.status_code != 404:
+                raise
+            group = self.get_volume_group(volume_group_id)
+            mappings = [
+                self.map_volume(host_id, str(volume["id"]))
+                for volume in group.get("volumes", [])
+                if volume.get("id")
+            ]
+            return {
+                "host_id": host_id,
+                "volume_group_id": volume_group_id,
+                "created": True,
+                "compatibility_fallback": "individual_volume_mappings",
+                "mappings": mappings,
+            }
+        result = created if isinstance(created, dict) else {}
+        return {"host_id": host_id, "volume_group_id": volume_group_id, "created": True, **result}
 
     def get_volume(self, volume_id: str) -> dict[str, Any]:
         data = self.request(

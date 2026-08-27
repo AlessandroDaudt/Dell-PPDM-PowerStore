@@ -163,14 +163,35 @@ class WorkflowRunner:
     def _create_volume(self) -> tuple[str, dict[str, Any]]:
         storage: Equipment = self.context["storage"]
         volume = self.request["volume"]
+        is_group = volume.get("resource_type") == "VOLUME_GROUP"
         if self.workflow.dry_run:
-            created = {
-                "id": f"dryrun-volume-{self.workflow.id}",
-                "name": volume["name"],
-                "size": volume["size_gib"] * 1024**3,
-                "wwn": "naa.dry-run",
-                "planned_request": "POST /api/rest/volume",
-            }
+            if is_group:
+                created = {
+                    "id": f"dryrun-volume-group-{self.workflow.id}",
+                    "name": volume["group_name"],
+                    "type": "Primary",
+                    "volumes": [
+                        {
+                            "id": f"dryrun-volume-{self.workflow.id}-{index}",
+                            "name": member["name"],
+                            "size": member["size_gib"] * 1024**3,
+                            "wwn": "naa.dry-run",
+                        }
+                        for index, member in enumerate(volume["members"], start=1)
+                    ],
+                    "planned_requests": [
+                        "POST /api/rest/volume_group",
+                        "POST /api/rest/volume (per member)",
+                    ],
+                }
+            else:
+                created = {
+                    "id": f"dryrun-volume-{self.workflow.id}",
+                    "name": volume["name"],
+                    "size": volume["size_gib"] * 1024**3,
+                    "wwn": "naa.dry-run",
+                    "planned_request": "POST /api/rest/volume",
+                }
         else:
             with PowerStoreClient(
                 storage.management_address or "",
@@ -179,14 +200,18 @@ class WorkflowRunner:
                 storage.api_port,
                 storage.verify_ssl,
             ) as client:
-                created = client.create_volume(volume)
-                full_volume = client.get_volume(created["id"])
-                created = {**created, **full_volume}
+                if is_group:
+                    created = client.create_volume_group(volume)
+                else:
+                    created = client.create_volume(volume)
+                    full_volume = client.get_volume(created["id"])
+                    created = {**created, **full_volume}
         self.workflow.volume_id = str(created["id"])
         self.workflow.volume_wwn = created.get("wwn")
         self.db.commit()
         self.context["volume"] = created
-        return f"LUN {volume['name']} preparada", created
+        resource_name = volume.get("name") or volume.get("group_name")
+        return f"LUN {resource_name} preparada", created
 
     def _map_hosts(self) -> tuple[str, dict[str, Any]]:
         storage: Equipment = self.context["storage"]
@@ -201,7 +226,11 @@ class WorkflowRunner:
                         "volume_id": volume_id,
                         "planned_requests": [
                             "GET/POST /api/rest/host",
-                            "POST /api/rest/host_volume_mapping",
+                            (
+                                "POST /api/rest/volume_group/{id}/attach"
+                                if self.request["volume"].get("resource_type") == "VOLUME_GROUP"
+                                else "POST /api/rest/host_volume_mapping"
+                            ),
                         ],
                     }
                 )
@@ -221,11 +250,14 @@ class WorkflowRunner:
                         [wwn.value for wwn in host.wwns if wwn.role == "INITIATOR"],
                         settings.get("powerstore_host_id"),
                     )
-                    mapped = client.map_volume(
-                        registered["id"],
-                        volume_id,
-                        self.request["volume"].get("logical_unit_number"),
-                    )
+                    if self.request["volume"].get("resource_type") == "VOLUME_GROUP":
+                        mapped = client.map_volume_group(registered["id"], volume_id)
+                    else:
+                        mapped = client.map_volume(
+                            registered["id"],
+                            volume_id,
+                            self.request["volume"].get("logical_unit_number"),
+                        )
                     mappings.append({"host": host.name, "host_id": registered["id"], **mapped})
         self.context["mappings"] = mappings
         return f"LUN apresentada a {len(mappings)} host(s)", {"mappings": mappings}
@@ -334,8 +366,12 @@ class WorkflowRunner:
                 else:
                     policy_id = options["policy_id"]
                 settings = get_settings()
+                asset_name = (
+                    self.request["volume"].get("name")
+                    or self.request["volume"].get("group_name")
+                )
                 asset = client.wait_for_powerstore_asset(
-                    self.request["volume"]["name"],
+                    asset_name,
                     timeout=settings.ppdm_discovery_timeout,
                     interval=settings.ppdm_discovery_interval,
                 )
@@ -369,7 +405,10 @@ class WorkflowRunner:
             storage.api_port,
             storage.verify_ssl,
         ) as client:
-            volume = client.get_volume(self.workflow.volume_id or "")
+            if self.request["volume"].get("resource_type") == "VOLUME_GROUP":
+                volume = client.get_volume_group(self.workflow.volume_id or "")
+            else:
+                volume = client.get_volume(self.workflow.volume_id or "")
         if not volume.get("id"):
             raise ValueError("PowerStore não retornou o volume na verificação final")
         return (
