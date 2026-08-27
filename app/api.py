@@ -25,6 +25,7 @@ from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
 from app.services.powerscale import PowerScaleClient
+from app.services.unity import UnityClient
 from app.services.ppdm import PPDMClient
 
 router = APIRouter(prefix="/api")
@@ -273,6 +274,17 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
             settings.get("api_version", "3"),
         ) as client:
             return client.test_connection()
+    if equipment.type == "UNITY":
+        settings = equipment_settings(equipment)
+        with UnityClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            password,
+            equipment.api_port,
+            equipment.verify_ssl,
+            settings.get("api_version", "5.2"),
+        ) as client:
+            return client.test_connection()
     if equipment.type == "POWERMAX":
         settings = equipment_settings(equipment)
         with PowerMaxClient(
@@ -339,6 +351,23 @@ def powerscale_options(equipment_id: int, _: AuthUser, db: DbSession):
         equipment.api_port,
         equipment.verify_ssl,
         settings.get("api_version", "3"),
+    ) as client:
+        return client.get_nas_options()
+
+
+@router.get("/integrations/unity/{equipment_id}/options")
+def unity_options(equipment_id: int, _: AuthUser, db: DbSession):
+    equipment = _get_equipment(db, equipment_id)
+    if equipment.type != "UNITY":
+        raise HTTPException(status_code=400, detail="equipamento não é Dell Unity")
+    settings = equipment_settings(equipment)
+    with UnityClient(
+        equipment.management_address or "",
+        equipment.username or "",
+        decrypt_secret(equipment.encrypted_password),
+        equipment.api_port,
+        equipment.verify_ssl,
+        settings.get("api_version", "5.2"),
     ) as client:
         return client.get_nas_options()
 

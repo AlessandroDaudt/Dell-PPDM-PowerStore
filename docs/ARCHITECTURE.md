@@ -68,6 +68,7 @@ There is no distributed transaction across the four products. Each step is confi
 - PowerMax: Unisphere `/univmax/restapi/{version}` with Basic Auth and a configured Symmetrix ID.
 - PowerStore NAS: the same PowerStore REST session and CSRF token as block resources, using file-service endpoints.
 - PowerScale: OneFS PAPI with Basic Auth; SMB and NFS share paths are reconciled before PPDM discovery.
+- Dell Unity: Unisphere REST with Basic Auth, `X-EMC-REST-CLIENT` and a session CSRF token; CIFS and NFS shares are reconciled by path.
 - PPDM NAS: a NAS asset source and a deployed NAS Protection Engine are prerequisites for live protection.
 - PPDM: v2 login; v2 policies through 19.16 and v3 from 19.17 onward, following Dell’s published transition.
 - Fabric OS: REST login, `brocade-zone` YANG module, ZoneDB checksum and different actions for FOS 9.1 and 9.2+.

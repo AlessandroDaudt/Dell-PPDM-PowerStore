@@ -139,7 +139,7 @@ function renderProvisionChoices() {
   const keep = (element) => element.value;
   const storage = $("#storageId"), ppdm = $("#ppdmId");
   const storageValue = keep(storage), ppdmValue = keep(ppdm);
-  storage.innerHTML = optionList(["POWERSTORE", "POWERMAX", "POWERSTORE_NAS"]); ppdm.innerHTML = optionList("PPDM");
+  storage.innerHTML = optionList(["POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "POWERSCALE", "UNITY"]); ppdm.innerHTML = optionList("PPDM");
   storage.value = storageValue; ppdm.value = ppdmValue;
   const choices = (type, cssName) => {
     const items = state.equipment.filter((item) => item.type === type);
@@ -201,6 +201,7 @@ function updateEquipmentFields() {
   $$(".host-setting").forEach((field) => field.classList.toggle("hidden", type !== "HOST"));
   $$(".powermax-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERMAX"));
   $$(".powerscale-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERSCALE"));
+  $$(".unity-setting").forEach((field) => field.classList.toggle("hidden", type !== "UNITY"));
   if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : type === "POWERSCALE" ? "8080" : "443";
 }
 
@@ -226,6 +227,7 @@ function openEquipment(item = null) {
     $("#equipmentDefaultSrp").value = item.settings.default_srp_id || "";
     $("#equipmentDefaultSlo").value = item.settings.default_slo_id || "";
     $("#equipmentOnefsApiVersion").value = item.settings.api_version || "3";
+    $("#equipmentUnityApiVersion").value = item.settings.api_version || "5.2";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -253,6 +255,8 @@ async function saveEquipment(event) {
     default_slo_id: $("#equipmentDefaultSlo").value || null,
   } : type === "POWERSCALE" ? {
     api_version: $("#equipmentOnefsApiVersion").value || "3",
+  } : type === "UNITY" ? {
+    api_version: $("#equipmentUnityApiVersion").value || "5.2",
   } : {};
   const body = {
     type, name: $("#equipmentName").value, management_address: $("#equipmentAddress").value || null,
@@ -292,7 +296,7 @@ async function syncPowerStore() {
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Sincronizando…";
   try {
     const type = $("#storageId").selectedOptions[0]?.dataset.type;
-    const endpoint = type === "POWERSCALE" ? "powerscale" : "powerstore";
+    const endpoint = type === "POWERSCALE" ? "powerscale" : type === "UNITY" ? "unity" : "powerstore";
     state.powerstoreOptions = await api(`/api/integrations/${endpoint}/${id}/options`);
     fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
     fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");

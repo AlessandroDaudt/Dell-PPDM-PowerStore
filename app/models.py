@@ -16,6 +16,7 @@ class EquipmentType(str, enum.Enum):
     POWERMAX = "POWERMAX"
     POWERSTORE_NAS = "POWERSTORE_NAS"
     POWERSCALE = "POWERSCALE"
+    UNITY = "UNITY"
     PPDM = "PPDM"
     BROCADE = "BROCADE"
     HOST = "HOST"

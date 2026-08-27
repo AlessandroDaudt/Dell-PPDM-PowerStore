@@ -46,6 +46,13 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 - The adapter uses `/platform/{version}/protocols/smb/shares` and `/platform/{version}/protocols/nfs/exports` with Basic Auth.
 - `NAS_SHARE` reconciles the share by name/path and preserves existing shares; a missing share is created with `raw_overrides` available for zone and permission fields.
 
+## Dell Unity
+
+- `GET /api/integrations/unity/{id}/options` reads NAS servers, file systems, CIFS shares and NFS shares from Unisphere.
+- The adapter uses `/api/types/cifsShare/instances`, `/api/types/nfsShare/instances`, `/api/types/filesystem/instances` and `/api/types/nasServer/instances`.
+- Unity requests send `X-EMC-REST-CLIENT: true`; mutating requests also send the CSRF token captured from a system-information GET.
+- Unity shares are then discovered in PPDM and assigned to a centralized NAS policy using the configured NAS Protection Engine.
+
 ## PPDM
 
 - Login: `POST /api/v2/login`, then use `access_token` as a Bearer token.

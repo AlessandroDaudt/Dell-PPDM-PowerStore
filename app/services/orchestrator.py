@@ -24,6 +24,7 @@ from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
 from app.services.powerscale import PowerScaleClient
+from app.services.unity import UnityClient
 from app.services.ppdm import PPDMClient
 
 STEP_NAMES = [
@@ -131,9 +132,9 @@ class WorkflowRunner:
             storage = self.db.get(Equipment, self.request["storage_id"])
             if not storage:
                 raise ValueError(f"equipamento {self.request['storage_id']} não encontrado")
-            if storage.type not in {"POWERSTORE_NAS", "POWERSCALE"}:
+            if storage.type not in {"POWERSTORE_NAS", "POWERSCALE", "UNITY"}:
                 raise ValueError(
-                    f"equipamento {storage.name} é {storage.type}, esperado POWERSTORE_NAS ou POWERSCALE"
+                    f"equipamento {storage.name} é {storage.type}, esperado um storage NAS Dell"
                 )
         else:
             storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE)
@@ -242,15 +243,22 @@ class WorkflowRunner:
                 }
         else:
             if is_nas:
-                client_type = PowerScaleClient if storage.type == "POWERSCALE" else PowerStoreNASClient
+                if storage.type == "POWERSCALE":
+                    client_type = PowerScaleClient
+                elif storage.type == "UNITY":
+                    client_type = UnityClient
+                else:
+                    client_type = PowerStoreNASClient
                 with client_type(
                     storage.management_address or "",
                     storage.username or "",
                     decrypt_secret(storage.encrypted_password),
                     storage.api_port,
                     storage.verify_ssl,
-                    equipment_settings(storage).get("api_version", "3")
-                    if storage.type == "POWERSCALE"
+                    equipment_settings(storage).get(
+                        "api_version", "5.2" if storage.type == "UNITY" else "3"
+                    )
+                    if storage.type in {"POWERSCALE", "UNITY"}
                     else None,
                 ) as client:
                     created = client.ensure_share(volume)
@@ -492,15 +500,22 @@ class WorkflowRunner:
         storage: Equipment = self.context["storage"]
         if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
             storage = self.context["storage"]
-            client_type = PowerScaleClient if storage.type == "POWERSCALE" else PowerStoreNASClient
+            if storage.type == "POWERSCALE":
+                client_type = PowerScaleClient
+            elif storage.type == "UNITY":
+                client_type = UnityClient
+            else:
+                client_type = PowerStoreNASClient
             with client_type(
                 storage.management_address or "",
                 storage.username or "",
                 decrypt_secret(storage.encrypted_password),
                 storage.api_port,
                 storage.verify_ssl,
-                equipment_settings(storage).get("api_version", "3")
-                if storage.type == "POWERSCALE"
+                equipment_settings(storage).get(
+                    "api_version", "5.2" if storage.type == "UNITY" else "3"
+                )
+                if storage.type in {"POWERSCALE", "UNITY"}
                 else None,
             ) as client:
                 volume = client.get_share(

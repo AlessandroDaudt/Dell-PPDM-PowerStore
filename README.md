@@ -102,6 +102,7 @@ stateDiagram-v2
 - Native PowerMax Storage Group provisioning through Unisphere REST, with array, SRP, SLO and volume-count parameters.
 - PowerStore NAS file-system and share discovery/reconciliation, with PPDM NAS policy assignment through a selected Protection Engine.
 - PowerScale SMB/NFS share discovery and reconciliation through OneFS PAPI, with the same PPDM NAS Protection Engine workflow.
+- Dell Unity CIFS/NFS share discovery and reconciliation through Unisphere REST, with CSRF protection and the same PPDM NAS Protection Engine workflow.
 - Hourly, daily, weekly or monthly schedules; windows, retention, Retention Lock, consistency and backup level.
 - Live inspection of existing policy objectives; Snapshot, Replication and Cloud Tier can be required and defined through version-specific JSON without silently ignoring incomplete selections.
 - End-to-end dry-run, live execution and detailed per-step history.
@@ -194,6 +195,7 @@ tests/                      unit tests with mocked APIs
 - [Dell PowerStore API Developer Portal](https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md)
 - [PowerProtect Data Manager NAS User Guide](https://www.dell.com/support/manuals/en-us/enterprise-copy-data-management/pp-dm_19.22_nas_ug/powerprotect-data-manager-overview?guid=guid-46a6e468-104c-4c76-9131-46bf666e2191)
 - [Dell PowerScale OneFS API](https://developer.dell.com/api/export-pdf/390010/version/9.2.0.0?uuid=4088)
+- [Dell Unity REST API](https://developer.dell.com/apis/3028/versions/5.2.0/docs/TUTORIALS/tutorials.md)
 - [Dell PowerProtect Data Manager Public REST API](https://developer.dell.com/apis/4378)
 - [Dell PPDM Storage Array User Guide](https://www.dell.com/support/manuals/en-us/enterprise-copy-data-management/pp-dm_19.22_storage_array_ug/powerprotect-data-manager-for-storage-arrays?guid=guid-4ea1b71a-e96a-4e53-8c0e-84d4a6d1d258&lang=en-us)
 - [Broadcom SAN Design and Best Practices — REST API/YANG](https://docs.broadcom.com/doc/53-1004781)
