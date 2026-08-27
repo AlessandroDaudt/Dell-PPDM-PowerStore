@@ -1,26 +1,26 @@
-# Arquitetura
+# Architecture
 
-## Escopo
+## Scope
 
-O SANFlow é um control plane, não um data plane. Ele coordena os sistemas de gerenciamento; o tráfego de I/O e de backup continua fluindo diretamente entre hosts, PowerStore e PowerProtect DD.
+SANFlow is a control plane, not a data plane. It coordinates management systems; I/O and backup traffic continue to flow directly between hosts, PowerStore and PowerProtect DD.
 
-Neste escopo, “apresentar a LUN” significa registrar/reconciliar os WWPNs do host no PowerStore, criar o mapping e configurar o zoning nas fabrics. O rescan SCSI, multipath e filesystem dentro do sistema operacional permanecem como atividade do host e não exigem que o SANFlow mantenha credenciais SSH dos servidores.
+In this scope, “presenting a LUN” means registering/reconciling host WWPNs in PowerStore, creating the mapping and configuring zoning across the fabrics. SCSI rescan, multipath and filesystem work inside the operating system remain host-side activities, so SANFlow does not need SSH credentials for servers.
 
-## Domínios
+## Domains
 
-1. **Inventário:** equipamentos, endpoints, credenciais cifradas, configurações específicas e WWNs.
-2. **Descoberta:** leitura em tempo real de opções PowerStore e PPDM.
-3. **Orquestração:** workflow persistente, sequencial e auditado.
-4. **Integrações:** clientes REST com sessões, TLS, timeout e erros normalizados.
-5. **Zoning:** processo Ansible separado, com inventário temporário apagado ao terminar.
-6. **Interface:** SPA sem toolchain Node, servida pelo mesmo container.
+1. **Inventory:** equipment, endpoints, encrypted credentials, device-specific settings and WWNs.
+2. **Discovery:** real-time PowerStore and PPDM option retrieval.
+3. **Orchestration:** persistent, sequential and audited workflows.
+4. **Integrations:** REST clients with sessions, TLS, timeouts and normalized errors.
+5. **Zoning:** an isolated Ansible process whose temporary inventory is removed when it finishes.
+6. **Interface:** a SPA with no Node toolchain, served by the same container.
 
-## Modelo de dados
+## Data model
 
 ```mermaid
 erDiagram
-    EQUIPMENT ||--o{ WWN : possui
-    WORKFLOW ||--|{ WORKFLOW_STEP : registra
+    EQUIPMENT ||--o{ WWN : owns
+    WORKFLOW ||--|{ WORKFLOW_STEP : records
     EQUIPMENT {
       int id
       string type
@@ -47,20 +47,20 @@ erDiagram
     }
 ```
 
-## Idempotência
+## Idempotency
 
-- O cadastro usa nomes únicos e WWNs únicos dentro do equipamento.
-- Hosts existentes no PowerStore são reutilizados por `powerstore_host_id` ou nome.
-- Mappings existentes entre o host e o volume são reconhecidos.
-- O playbook consulta a configuração definida, não recria zones existentes e preserva os membros da cfg.
-- A associação PPDM é executada após a descoberta do asset. Uma nova execução deve usar política existente ou um novo nome de política para evitar duplicidade.
+- Inventory names are unique and WWNs are unique within an equipment entry.
+- Existing PowerStore hosts are reused by `powerstore_host_id` or by name.
+- Existing mappings between a host and volume are detected.
+- The playbook reads the defined configuration, does not recreate existing zones and preserves cfg members.
+- PPDM assignment runs after asset discovery. A new run should use an existing policy or a new policy name to avoid duplicates.
 
-## Consistência e compensação
+## Consistency and compensation
 
-Não há transação distribuída entre os quatro produtos. Cada etapa é confirmada antes da seguinte. Se uma etapa posterior falhar, recursos anteriores permanecem e seus IDs ficam no workflow. Isso evita que um rollback automático apague uma LUN que já possa ter sido detectada por um host.
+There is no distributed transaction across the four products. Each step is confirmed before the next one. If a later step fails, earlier resources remain and their IDs are stored in the workflow. This prevents an automatic rollback from deleting a LUN that a host may already have discovered.
 
-## Compatibilidade
+## Compatibility
 
-- PowerStore: URI base `/api/rest`, com token `DELL-EMC-TOKEN` para mutações.
-- PPDM: login v2; políticas v2 até 19.16 e v3 a partir de 19.17, seguindo a transição publicada pela Dell.
-- Fabric OS: login REST, módulo YANG `brocade-zone`, checksum ZoneDB e ações diferentes para FOS 9.1 e 9.2+.
+- PowerStore: `/api/rest` base URI, with `DELL-EMC-TOKEN` for mutations.
+- PPDM: v2 login; v2 policies through 19.16 and v3 from 19.17 onward, following Dell’s published transition.
+- Fabric OS: REST login, `brocade-zone` YANG module, ZoneDB checksum and different actions for FOS 9.1 and 9.2+.

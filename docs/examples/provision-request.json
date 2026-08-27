@@ -7,7 +7,7 @@
   "volume": {
     "name": "PRD_ORACLE_001",
     "size_gib": 500,
-    "description": "Banco de dados de produção",
+    "description": "Production database",
     "appliance_id": null,
     "performance_policy_id": null,
     "protection_policy_id": null,
@@ -22,7 +22,7 @@
   },
   "backup": {
     "mode": "EXISTING_POLICY",
-    "policy_id": "id-da-politica-ppdm",
+    "policy_id": "ppdm-policy-id",
     "frequency": "DAILY",
     "interval": 1,
     "start_time": "22:00:00",

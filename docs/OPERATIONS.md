@@ -1,66 +1,66 @@
-# Runbook operacional
+# Operations runbook
 
-## 1. Preparação
+## 1. Preparation
 
-- Confirme matriz de compatibilidade entre PowerStoreOS, PPDM, DDOS e FOS.
-- Configure DNS/NTP consistente e certificados TLS confiáveis.
-- Crie contas de automação dedicadas.
-- Confirme que o PowerStore já é um asset source do PPDM e que a descoberta funciona.
-- Confirme que DDBoost está habilitado no PowerProtect DD.
-- No Brocade, use o switch principal de cada fabric e confirme a cfg que deve ser ativada.
+- Confirm the compatibility matrix for PowerStoreOS, PPDM, DDOS and Fabric OS.
+- Configure consistent DNS/NTP and trusted TLS certificates.
+- Create dedicated automation accounts.
+- Confirm that PowerStore is already a PPDM asset source and that discovery works.
+- Confirm that DDBoost is enabled on PowerProtect DD.
+- On Brocade, use the principal switch for each fabric and confirm the cfg to activate.
 
-## 2. Subida do serviço
+## 2. Start the service
 
 ```bash
 cp .env.example .env
-# gerar uma chave longa e uma senha administrativa forte
+# generate a long secret key and a strong administrative password
 docker compose up --build -d
 docker compose ps
 ```
 
-Faça backup do volume `sanflow_data`. Ele contém o banco e as credenciais cifradas; a restauração também exige o mesmo `APP_SECRET_KEY`.
+Back up the `sanflow_data` volume. It contains the database and encrypted credentials; restoring it also requires the same `APP_SECRET_KEY`.
 
-## 3. Cadastro
+## 3. Inventory registration
 
 ### PowerStore
 
-Cadastre o endpoint de gerenciamento, porta 443, usuário, TLS e todos os WWPNs FC target. Marque `fabric=A` ou `fabric=B` conforme a conectividade.
+Register the management endpoint, port 443, user, TLS setting and every FC target WWPN. Set `fabric=A` or `fabric=B` according to the connectivity design.
 
 ### Hosts
 
-Cadastre o nome exatamente como deve aparecer no PowerStore, o sistema operacional e os WWPNs das HBAs. Se o host já existe, o `PowerStore host ID` elimina ambiguidades.
+Register the name exactly as it should appear in PowerStore, the operating system and the HBA WWPNs. If the host already exists, `PowerStore host ID` removes ambiguity.
 
 ### Brocade
 
-Cadastre um switch principal por fabric. Informe FID, cfg ativa e geração `9.1` ou `9.2` para selecionar a ação de commit correta.
+Register one principal switch per fabric. Provide the FID, active cfg and FOS generation (`9.1` or `9.2`) so the playbook selects the correct commit action.
 
 ### PPDM
 
-Cadastre o endpoint/porta 8443. **Buscar Data Domains e rotinas** lê as opções no momento da mudança; nada é mantido como catálogo paralelo.
+Register the endpoint on port 8443. **Fetch Data Domains and policies** reads options at change time; SANFlow does not maintain a parallel catalog.
 
-## 4. Primeira execução
+## 4. First execution
 
-1. Mantenha **Dry-run seguro** ligado.
-2. Selecione storage, hosts e Brocades.
-3. Sincronize as opções do PowerStore e do PPDM.
-4. Prefira uma política PPDM existente já homologada.
-5. Execute e abra o detalhe das seis etapas.
-6. Valide zone names, membros, cfg, política, DD e retenção.
-7. Em janela de mudança, repita em modo live.
+1. Keep **Safe dry-run** enabled.
+2. Select the storage, hosts and Brocade switches.
+3. Synchronize PowerStore and PPDM options.
+4. Prefer an existing, approved PPDM policy.
+5. Execute the workflow and open the six-step detail view.
+6. Validate zone names, members, cfg, policy, DD and retention.
+7. During an approved change window, repeat in live mode.
 
-## 5. Falhas
+## 5. Failures
 
-| Etapa | Ação recomendada |
+| Step | Recommended action |
 | --- | --- |
-| Validação | corrija tipo, fabric, role ou WWN no inventário |
-| Criar LUN | confira espaço, appliance, policy IDs, TLS e conta PowerStore |
-| Mapear host | confirme que o WWPN não pertence a outro host e revise `os_type` |
-| Zoning | verifique FID, cfg, checksum concorrente e transação de ZoneDB aberta |
-| PPDM | execute discovery do asset source PowerStore e confirme compatibilidade |
-| Verificação | use os IDs do workflow para comparar nos consoles oficiais |
+| Validation | correct the inventory type, fabric, role or WWN |
+| Create LUN | check capacity, appliance, policy IDs, TLS and the PowerStore account |
+| Map host | confirm that the WWPN does not belong to another host and review `os_type` |
+| Zoning | check FID, cfg, concurrent checksum changes and any open ZoneDB transaction |
+| PPDM | run discovery for the PowerStore asset source and confirm compatibility |
+| Verification | use the workflow IDs to compare against the official consoles |
 
-Não exclua automaticamente um volume após falha de zoning/PPDM. Determine primeiro se ele já está em uso ou visível no fabric.
+Do not automatically delete a volume after a zoning or PPDM failure. First determine whether it is already in use or visible in the fabric.
 
-## 6. Atualização e rollback do aplicativo
+## 6. Application update and rollback
 
-Faça backup do volume e da `.env`, construa a nova imagem e suba o Compose. Para voltar, use a tag anterior da imagem; não substitua nem remova o volume de dados.
+Back up the data volume and `.env`, build the new image and start Compose. To roll back, use the previous image tag; do not replace or remove the data volume.
