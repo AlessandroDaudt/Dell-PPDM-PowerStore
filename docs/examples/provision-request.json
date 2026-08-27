@@ -1,0 +1,43 @@
+{
+  "storage_id": 1,
+  "ppdm_id": 4,
+  "host_ids": [2],
+  "brocade_ids": [3, 5],
+  "dry_run": true,
+  "volume": {
+    "name": "PRD_ORACLE_001",
+    "size_gib": 500,
+    "description": "Banco de dados de produção",
+    "appliance_id": null,
+    "performance_policy_id": null,
+    "protection_policy_id": null,
+    "logical_unit_number": null
+  },
+  "zoning": {
+    "enabled": true,
+    "config_name": "SANFLOW_CFG",
+    "naming_template": "Z_{host}_{storage}_{fabric}",
+    "activate": true,
+    "peer_zoning": false
+  },
+  "backup": {
+    "mode": "EXISTING_POLICY",
+    "policy_id": "id-da-politica-ppdm",
+    "frequency": "DAILY",
+    "interval": 1,
+    "start_time": "22:00:00",
+    "duration_hours": 8,
+    "weekdays": ["SATURDAY"],
+    "day_of_month": 1,
+    "retention_interval": 30,
+    "retention_unit": "DAY",
+    "retention_lock": false,
+    "backup_level": "SYNTHETIC_FULL",
+    "encrypted": true,
+    "data_consistency": "CRASH_CONSISTENT",
+    "snapshot_enabled": false,
+    "replication_enabled": false,
+    "cloud_tier_enabled": false,
+    "raw_overrides": {}
+  }
+}

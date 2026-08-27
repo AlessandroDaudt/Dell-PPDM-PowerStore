@@ -1,0 +1,257 @@
+---
+- name: Configurar zoning Fibre Channel nos Brocade via REST API
+  hosts: brocade_switches
+  gather_facts: false
+  connection: local
+  vars:
+    api_headers:
+      Accept: application/yang-data+json
+      Content-Type: application/yang-data+json
+    vf_query: "?vf-id={{ fabric_id | default(128) }}"
+
+  tasks:
+    - name: Executar transação de zoning
+      block:
+        - name: Abrir sessão REST no Fabric OS
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/login"
+            method: POST
+            url_username: "{{ switch_username }}"
+            url_password: "{{ switch_password }}"
+            force_basic_auth: true
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ api_headers }}"
+            status_code: 200
+            return_content: false
+          register: fos_login
+          no_log: true
+
+        - name: Guardar token da sessão sem exibi-lo
+          ansible.builtin.set_fact:
+            session_headers: >-
+              {{ api_headers | combine({'Authorization': fos_login.authorization}) }}
+          no_log: true
+
+        - name: Verificar se a zone já existe
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/defined-configuration/zone/zone-name/{{ zone_name | urlencode }}{{ vf_query }}"
+            method: GET
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: [200, 404]
+            return_content: true
+          register: existing_zone
+          no_log: true
+
+        - name: Registrar presença da zone
+          ansible.builtin.set_fact:
+            zone_exists: "{{ existing_zone.status == 200 }}"
+          no_log: true
+
+        - name: Criar zone standard com iniciadores e targets WWPN
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/defined-configuration/zone{{ vf_query }}"
+            method: POST
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              zone:
+                zone-name: "{{ zone_name }}"
+                zone-type-string: zone
+                member-entry:
+                  entry-name: "{{ zone_members }}"
+            status_code: [201, 204]
+          when:
+            - not zone_exists | bool
+            - not peer_zoning | bool
+          no_log: true
+
+        - name: Criar peer zone com targets principais
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/defined-configuration/zone{{ vf_query }}"
+            method: POST
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              zone:
+                zone-name: "{{ zone_name }}"
+                zone-type-string: user-created-peer-zone
+                member-entry:
+                  entry-name: "{{ zone_members }}"
+                  principal-entry-name: "{{ zone_principal_members }}"
+            status_code: [201, 204]
+          when:
+            - not zone_exists | bool
+            - peer_zoning | bool
+          no_log: true
+
+        - name: Consultar configurações definidas
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/defined-configuration/cfg{{ vf_query }}"
+            method: GET
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: 200
+            return_content: true
+          register: defined_configs
+          no_log: true
+
+        - name: Identificar configuração selecionada
+          ansible.builtin.set_fact:
+            selected_cfg: >-
+              {{ defined_configs.json.Response.cfg | default(defined_configs.json.cfg)
+                 | default([]) | selectattr('cfg-name', 'equalto', zone_config)
+                 | list | first | default({}) }}
+          no_log: true
+
+        - name: Impedir ativação de configuração inexistente
+          ansible.builtin.assert:
+            that:
+              - selected_cfg | length > 0
+            fail_msg: "A configuração {{ zone_config }} não existe no switch. Cadastre a cfg ativa correta."
+
+        - name: Calcular membros preservando as zones existentes
+          ansible.builtin.set_fact:
+            config_zone_names: >-
+              {{ ((selected_cfg['member-zone']['zone-name']
+                   if selected_cfg.get('member-zone') else []) + [zone_name]) | unique | list }}
+          no_log: true
+
+        - name: Adicionar a zone à configuração definida
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/defined-configuration/cfg{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              cfg:
+                cfg-name: "{{ zone_config }}"
+                member-zone:
+                  zone-name: "{{ config_zone_names }}"
+            status_code: 204
+          when: zone_name not in (selected_cfg.get('member-zone', {}).get('zone-name', []))
+          no_log: true
+
+        - name: Consultar checksum da ZoneDB
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/checksum{{ vf_query }}"
+            method: GET
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: 200
+            return_content: true
+          register: effective_configuration
+          no_log: true
+
+        - name: Extrair checksum da ZoneDB
+          ansible.builtin.set_fact:
+            zone_checksum: >-
+              {{ effective_configuration.json.Response['effective-configuration'].checksum
+                 | default(effective_configuration.json['effective-configuration'].checksum) }}
+          no_log: true
+
+        - name: Salvar transação da ZoneDB no FOS até 9.1
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/cfg-action/1{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              checksum: "{{ zone_checksum }}"
+            status_code: 204
+          when:
+            - fos_generation is version('9.2', '<')
+            - (not zone_exists | bool) or (zone_name not in (selected_cfg.get('member-zone', {}).get('zone-name', [])))
+          no_log: true
+
+        - name: Salvar transação da ZoneDB no FOS 9.2+
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/cfg-action-v2/save{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              checksum: "{{ zone_checksum }}"
+            status_code: 204
+          when:
+            - fos_generation is version('9.2', '>=')
+            - (not zone_exists | bool) or (zone_name not in (selected_cfg.get('member-zone', {}).get('zone-name', [])))
+          no_log: true
+
+        - name: Reconsultar checksum antes da ativação
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/checksum{{ vf_query }}"
+            method: GET
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: 200
+            return_content: true
+          register: effective_after_save
+          when: activate_config | bool
+          no_log: true
+
+        - name: Ativar a configuração de zoning selecionada
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/cfg-name/{{ zone_config | urlencode }}{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            body_format: json
+            body:
+              checksum: >-
+                {{ effective_after_save.json.Response['effective-configuration'].checksum
+                   | default(effective_after_save.json['effective-configuration'].checksum) }}
+            status_code: 204
+          when: activate_config | bool
+          no_log: true
+
+        - name: Registrar resumo seguro da alteração
+          ansible.builtin.debug:
+            msg: "Zone {{ zone_name }} processada em {{ zone_config }} com {{ zone_members | length }} membros"
+
+      rescue:
+        - name: Abortar transação pendente no FOS até 9.1
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/cfg-action/4{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: [204, 400, 409]
+          when:
+            - session_headers is defined
+            - fos_generation is version('9.2', '<')
+          failed_when: false
+          no_log: true
+
+        - name: Abortar transação pendente no FOS 9.2+
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/running/brocade-zone/effective-configuration/cfg-action-v2/transaction-abort{{ vf_query }}"
+            method: PATCH
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers }}"
+            status_code: [204, 400, 409]
+          when:
+            - session_headers is defined
+            - fos_generation is version('9.2', '>=')
+          failed_when: false
+          no_log: true
+
+        - name: Encerrar o play com a falha original de zoning
+          ansible.builtin.fail:
+            msg: "A transação de zoning falhou e uma tentativa segura de abort foi executada."
+
+      always:
+        - name: Encerrar sessão REST no Fabric OS
+          ansible.builtin.uri:
+            url: "{{ switch_api_url }}/rest/logout"
+            method: POST
+            validate_certs: "{{ verify_ssl | bool }}"
+            headers: "{{ session_headers | default(api_headers) }}"
+            status_code: [200, 204, 401]
+          when: fos_login is defined and fos_login.authorization is defined
+          no_log: true

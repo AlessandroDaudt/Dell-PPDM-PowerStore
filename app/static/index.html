@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Automação unificada de LUNs Dell PowerStore, zoning Brocade e proteção PPDM." />
+    <title>SANFlow Dell</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <section id="loginScreen" class="login-screen">
+      <div class="login-orbit orbit-one"></div>
+      <div class="login-orbit orbit-two"></div>
+      <form id="loginForm" class="login-card">
+        <div class="brand-mark">SF</div>
+        <p class="eyebrow">DELL INFRASTRUCTURE AUTOMATION</p>
+        <h1>Uma LUN. Um fluxo. Zero silos.</h1>
+        <p class="muted">PowerStore, hosts físicos, Brocade e PPDM coordenados em uma única operação.</p>
+        <label>Usuário<input name="username" autocomplete="username" value="admin" required /></label>
+        <label>Senha<input name="password" type="password" autocomplete="current-password" required /></label>
+        <p id="loginError" class="form-error"></p>
+        <button class="button primary wide" type="submit">Entrar no control plane</button>
+      </form>
+    </section>
+
+    <div id="appShell" class="app-shell hidden">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark small">SF</span><span>SANFlow <b>Dell</b></span></div>
+        <nav aria-label="Navegação principal">
+          <button class="nav-item active" data-route="home"><span>⌂</span>Visão geral</button>
+          <button class="nav-item" data-route="inventory"><span>▦</span>Inventário</button>
+          <button class="nav-item" data-route="provision"><span>＋</span>Nova LUN</button>
+          <button class="nav-item" data-route="workflows"><span>↻</span>Execuções</button>
+          <button class="nav-item" data-route="docs"><span>?</span>Documentação</button>
+        </nav>
+        <div class="sidebar-foot">
+          <span class="live-dot"></span>
+          <div><strong>Control plane</strong><small>API disponível</small></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div><p class="eyebrow" id="pageEyebrow">CONTROL PLANE</p><h2 id="pageTitle">Visão geral</h2></div>
+          <div class="top-actions">
+            <span class="mode-pill"><i></i> REST + Ansible</span>
+            <button id="logoutButton" class="icon-button" title="Sair">↪</button>
+          </div>
+        </header>
+
+        <section id="page-home" class="page active">
+          <div class="hero">
+            <div class="hero-copy">
+              <span class="hero-kicker">ORQUESTRAÇÃO PONTA A PONTA</span>
+              <h1>Da capacidade ao backup<br /><em>em uma única mudança.</em></h1>
+              <p>Valide o inventário, crie a LUN, apresente aos hosts, configure as fabrics e proteja os dados sem alternar entre consoles.</p>
+              <div class="hero-actions">
+                <button class="button primary" data-go="provision">Provisionar nova LUN</button>
+                <button class="button ghost" data-go="inventory">Revisar inventário</button>
+              </div>
+            </div>
+            <div class="hero-status">
+              <p class="eyebrow">POSTURA OPERACIONAL</p>
+              <strong id="heroReadiness">Aguardando inventário</strong>
+              <div class="readiness-bar"><span id="readinessBar"></span></div>
+              <small id="readinessText">Cadastre os quatro domínios para iniciar.</small>
+            </div>
+          </div>
+
+          <div class="metrics" id="metrics"></div>
+
+          <section class="panel flow-panel">
+            <div class="section-heading">
+              <div><p class="eyebrow">FLUXO AUTOMATIZADO</p><h3>O que acontece por baixo</h3></div>
+              <span class="safe-chip">● Dry-run como padrão</span>
+            </div>
+            <div class="flow-map" aria-label="Fluxo de provisionamento">
+              <article class="flow-node"><span class="node-number">01</span><i class="node-icon powerstore">PS</i><h4>Pré-validação</h4><p>WWNs, fabrics, credenciais e políticas.</p></article>
+              <b class="flow-arrow">→</b>
+              <article class="flow-node"><span class="node-number">02</span><i class="node-icon powerstore">LUN</i><h4>PowerStore</h4><p>Cria volume via <code>POST /volume</code>.</p></article>
+              <b class="flow-arrow">→</b>
+              <article class="flow-node"><span class="node-number">03</span><i class="node-icon host">H</i><h4>Hosts físicos</h4><p>Registra WWPNs e cria os mappings.</p></article>
+              <b class="flow-arrow">→</b>
+              <article class="flow-node"><span class="node-number">04</span><i class="node-icon brocade">B</i><h4>Brocade</h4><p>Ansible aplica zoning nas fabrics A/B.</p></article>
+              <b class="flow-arrow">→</b>
+              <article class="flow-node"><span class="node-number">05</span><i class="node-icon ppdm">P</i><h4>PPDM</h4><p>Descobre o asset e associa a proteção.</p></article>
+              <b class="flow-arrow">→</b>
+              <article class="flow-node"><span class="node-number">06</span><i class="node-icon dd">DD</i><h4>Data Domain</h4><p>Retenção, storage unit e rotina ativas.</p></article>
+            </div>
+          </section>
+
+          <div class="home-grid">
+            <section class="panel">
+              <div class="section-heading"><div><p class="eyebrow">ÚLTIMAS EXECUÇÕES</p><h3>Atividade recente</h3></div><button class="text-button" data-go="workflows">Ver todas</button></div>
+              <div id="recentWorkflows" class="compact-list empty-state">Nenhuma execução registrada.</div>
+            </section>
+            <section class="panel guardrail-panel">
+              <p class="eyebrow">GUARDRAILS</p><h3>Mudanças sob controle</h3>
+              <ul class="check-list"><li>Credenciais cifradas no banco</li><li>CSRF token nativo do PowerStore</li><li>Checksum da ZoneDB antes do commit</li><li>Trilha de auditoria por etapa</li></ul>
+            </section>
+          </div>
+        </section>
+
+        <section id="page-inventory" class="page">
+          <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div id="inventoryGrid" class="inventory-grid"></div>
+        </section>
+
+        <section id="page-provision" class="page">
+          <form id="provisionForm">
+            <div class="provision-head">
+              <div><span class="hero-kicker">NOVO PROVISIONAMENTO</span><h3>Descreva o resultado. O fluxo cuida da sequência.</h3></div>
+              <label class="switch-label"><input id="dryRun" type="checkbox" checked /><span></span><b>Dry-run seguro</b></label>
+            </div>
+
+            <section class="form-section">
+              <div class="section-index">01</div><div class="section-body">
+                <div class="section-heading"><div><p class="eyebrow">CAPACIDADE</p><h3>LUN no PowerStore</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sincronizar opções</button></div>
+                <div class="form-grid three">
+                  <label>PowerStore<select id="storageId" required><option value="">Selecione</option></select></label>
+                  <label>Nome da LUN<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
+                  <label>Tamanho (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
+                  <label>Appliance<select id="applianceId"><option value="">Seleção automática</option></select></label>
+                  <label>Performance policy<select id="performancePolicy"><option value="">Padrão do array</option></select></label>
+                  <label>Protection policy local<select id="localProtectionPolicy"><option value="">Sem política local</option></select></label>
+                  <label>LUN ID desejado<input id="lunNumber" type="number" min="0" max="16383" placeholder="Automático" /></label>
+                  <label class="span-two">Descrição<input id="volumeDescription" value="Criado pelo SANFlow Dell" /></label>
+                </div>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-index">02</div><div class="section-body">
+                <div class="section-heading"><div><p class="eyebrow">CONECTIVIDADE</p><h3>Hosts e fabrics</h3></div></div>
+                <div class="selection-columns"><div><label class="label-title">Hosts físicos</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Switches Brocade</label><div id="brocadeChoices" class="choice-list"></div></div></div>
+                <div class="inline-options">
+                  <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Executar zoning</label>
+                  <label>Configuração ativa<input id="zoneConfig" value="SANFLOW_CFG" /></label>
+                  <label>Template da zone<input id="zoneTemplate" value="Z_{host}_{storage}_{fabric}" /></label>
+                  <label class="check-field"><input id="peerZoning" type="checkbox" /> Peer zoning</label>
+                  <label class="check-field"><input id="activateConfig" type="checkbox" checked /> Ativar configuração</label>
+                </div>
+              </div>
+            </section>
+
+            <section class="form-section">
+              <div class="section-index">03</div><div class="section-body">
+                <div class="section-heading"><div><p class="eyebrow">PROTEÇÃO</p><h3>Backup no PPDM</h3></div><button id="syncPpdm" type="button" class="button compact ghost">↻ Buscar Data Domains e rotinas</button></div>
+                <div class="form-grid three">
+                  <label>PPDM<select id="ppdmId"><option value="">Selecione</option></select></label>
+                  <label>Estratégia<select id="backupMode"><option value="EXISTING_POLICY">Usar política existente</option><option value="CREATE_POLICY">Criar nova política</option><option value="NONE">Sem backup PPDM</option></select></label>
+                  <label id="existingPolicyField">Política existente<select id="existingPolicy"><option value="">Sincronize o PPDM</option></select></label>
+                  <label id="newPolicyField" class="hidden">Nome da nova política<input id="newPolicyName" placeholder="POL_PRD_DAILY" /></label>
+                  <label id="dataDomainField" class="hidden">Data Domain<select id="dataDomain"><option value="">Sincronize o PPDM</option></select></label>
+                  <label id="ddInterfaceField" class="hidden">Interface preferencial<select id="ddInterface"><option value="">Automática</option></select></label>
+                  <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto provisionar</option></select></label>
+                  <label>Frequência<select id="backupFrequency"><option>DAILY</option><option>HOURLY</option><option>WEEKLY</option><option>MONTHLY</option></select></label>
+                  <label>Início UTC<input id="backupStart" type="time" step="1" value="22:00:00" /></label>
+                  <label>Janela (horas)<input id="backupDuration" type="number" min="1" max="24" value="8" /></label>
+                  <label>Intervalo<input id="backupInterval" type="number" min="1" max="24" value="1" /></label>
+                  <label>Retenção<input id="retentionInterval" type="number" min="1" max="3650" value="30" /></label>
+                  <label>Unidade<select id="retentionUnit"><option>DAY</option><option>WEEK</option><option>MONTH</option><option>YEAR</option></select></label>
+                  <label>Nível do backup<select id="backupLevel"><option>SYNTHETIC_FULL</option><option>FULL</option></select></label>
+                  <label>Consistência<select id="dataConsistency"><option>CRASH_CONSISTENT</option><option>APPLICATION_CONSISTENT</option></select></label>
+                  <label>Dia do mês<input id="dayOfMonth" type="number" min="1" max="31" value="1" /></label>
+                  <label>Dias da semana<input id="weekdays" value="SATURDAY" placeholder="MONDAY,WEDNESDAY" /></label>
+                </div>
+                <div class="option-strip">
+                  <label><input id="retentionLock" type="checkbox" /> Retention Lock</label><label><input id="encryptedBackup" type="checkbox" checked /> Criptografado</label><label><input id="snapshotEnabled" type="checkbox" /> Snapshot local</label><label><input id="replicationEnabled" type="checkbox" /> Replicação</label><label><input id="cloudTierEnabled" type="checkbox" /> Cloud Tier</label>
+                </div>
+                <div id="policySummary" class="policy-summary hidden"></div>
+                <details class="advanced"><summary>Payload avançado (JSON)</summary><p>Mesclado ao payload da política. Snapshot, replicação e Cloud Tier exigem o objetivo completo da versão instalada em <code>additional_objectives</code>; assim nenhuma opção é ignorada.</p><textarea id="rawOverrides" rows="5" placeholder='{"additional_objectives": [{"type": "REPLICATION", "...": "campos oficiais da sua versão"}]}'></textarea></details>
+              </div>
+            </section>
+
+            <div class="submit-bar"><div><strong>Pronto para orquestrar?</strong><small id="submitHint">O dry-run gera o plano sem modificar a infraestrutura.</small></div><button class="button primary" type="submit">Executar fluxo completo →</button></div>
+          </form>
+        </section>
+
+        <section id="page-workflows" class="page">
+          <div class="page-intro"><p>Acompanhe cada chamada e veja exatamente onde uma execução parou.</p><button id="refreshWorkflows" class="button ghost">↻ Atualizar</button></div>
+          <div id="workflowList" class="workflow-list"></div>
+        </section>
+
+        <section id="page-docs" class="page">
+          <div class="docs-hero"><span class="hero-kicker">RUNBOOK INTEGRADO</span><h3>Do primeiro cadastro ao go-live.</h3><p>A API da própria aplicação também está documentada e pode ser usada por pipelines externos.</p><a class="button primary" href="/docs" target="_blank" rel="noreferrer">Abrir OpenAPI interativa ↗</a></div>
+          <div class="docs-grid">
+            <article class="panel"><span>01</span><h4>Cadastre o inventário</h4><p>Inclua os endpoints de gerenciamento, contas de automação, validação TLS e todos os WWPNs separados por fabric.</p></article>
+            <article class="panel"><span>02</span><h4>Teste em dry-run</h4><p>Revise requests planejadas, zones, mappings e política antes de permitir mudanças reais.</p></article>
+            <article class="panel"><span>03</span><h4>Habilite o modo live</h4><p>Desmarque o dry-run apenas em janela aprovada e acompanhe as seis etapas no histórico.</p></article>
+            <article class="panel"><span>04</span><h4>Trate falhas por domínio</h4><p>O volume criado nunca é apagado automaticamente. Consulte o detalhe e faça a remediação consciente.</p></article>
+          </div>
+          <section class="panel references"><p class="eyebrow">FONTES OFICIAIS</p><h3>Contratos usados na implementação</h3><div class="reference-links"><a href="https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md" target="_blank" rel="noreferrer">Dell PowerStore REST API ↗</a><a href="https://developer.dell.com/apis/4378" target="_blank" rel="noreferrer">Dell PPDM Public REST API ↗</a><a href="https://docs.broadcom.com/doc/53-1004781" target="_blank" rel="noreferrer">Broadcom Fabric OS REST/YANG ↗</a></div></section>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="equipmentDialog">
+      <form id="equipmentForm" method="dialog">
+        <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
+        <input id="equipmentId" type="hidden" />
+        <div class="form-grid two">
+          <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+          <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
+          <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
+          <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>
+          <label class="network-field">Usuário API<input id="equipmentUsername" autocomplete="off" /></label>
+          <label class="network-field">Senha API<input id="equipmentPassword" type="password" autocomplete="new-password" placeholder="Mantida ao editar em branco" /></label>
+        </div>
+        <div class="form-grid three settings-fields">
+          <label class="brocade-setting hidden">Fabric<input id="equipmentFabric" value="A" /></label>
+          <label class="brocade-setting hidden">FID<input id="equipmentFid" type="number" value="128" /></label>
+          <label class="brocade-setting hidden">Config ativa<input id="equipmentActiveConfig" value="SANFLOW_CFG" /></label>
+          <label class="brocade-setting hidden">Geração FOS<select id="equipmentFos"><option>9.1</option><option>9.2</option></select></label>
+          <label class="host-setting hidden">Sistema operacional<select id="equipmentOs"><option>Linux</option><option>Windows</option><option>ESXi</option><option>AIX</option><option>HP-UX</option><option>Solaris</option></select></label>
+          <label class="host-setting hidden">PowerStore host ID<input id="equipmentHostId" placeholder="Opcional" /></label>
+        </div>
+        <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
+        <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>
+        <p id="equipmentError" class="form-error"></p>
+        <div class="dialog-actions"><button type="button" class="button ghost" data-close-dialog>Cancelar</button><button type="submit" class="button primary">Salvar equipamento</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="workflowDialog"><div class="dialog-head"><div><p class="eyebrow">EXECUÇÃO</p><h3 id="workflowDialogTitle">Detalhe</h3></div><button type="button" class="icon-button" data-close-workflow>×</button></div><div id="workflowDetail"></div></dialog>
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
