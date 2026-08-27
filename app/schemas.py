@@ -39,7 +39,9 @@ class WWNRead(WWNInput):
 
 class EquipmentCreate(BaseModel):
     name: str = Field(min_length=2, max_length=128)
-    type: Literal["POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE", "HOST"]
+    type: Literal[
+        "POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "POWERSCALE", "PPDM", "BROCADE", "HOST"
+    ]
     management_address: str | None = Field(default=None, max_length=255)
     api_port: int | None = Field(default=None, ge=1, le=65535)
     username: str | None = Field(default=None, max_length=255)
@@ -52,7 +54,9 @@ class EquipmentCreate(BaseModel):
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
             raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
-        if self.type in {"POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "PPDM", "BROCADE"} and not self.username:
+        if self.type in {
+            "POWERSTORE", "POWERMAX", "POWERSTORE_NAS", "POWERSCALE", "PPDM", "BROCADE"
+        } and not self.username:
             raise ValueError("usuário de API é obrigatório para este tipo")
         return self
 

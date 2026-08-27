@@ -24,6 +24,7 @@ from app.services.orchestrator import create_workflow, equipment_settings, run_w
 from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
+from app.services.powerscale import PowerScaleClient
 from app.services.ppdm import PPDMClient
 
 router = APIRouter(prefix="/api")
@@ -261,6 +262,17 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
             equipment.verify_ssl,
         ) as client:
             return client.test_connection()
+    if equipment.type == "POWERSCALE":
+        settings = equipment_settings(equipment)
+        with PowerScaleClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            password,
+            equipment.api_port,
+            equipment.verify_ssl,
+            settings.get("api_version", "3"),
+        ) as client:
+            return client.test_connection()
     if equipment.type == "POWERMAX":
         settings = equipment_settings(equipment)
         with PowerMaxClient(
@@ -312,6 +324,23 @@ def powerstore_options(equipment_id: int, _: AuthUser, db: DbSession):
         equipment.verify_ssl,
     ) as client:
         return client.get_options()
+
+
+@router.get("/integrations/powerscale/{equipment_id}/options")
+def powerscale_options(equipment_id: int, _: AuthUser, db: DbSession):
+    equipment = _get_equipment(db, equipment_id)
+    if equipment.type != "POWERSCALE":
+        raise HTTPException(status_code=400, detail="equipamento não é PowerScale")
+    settings = equipment_settings(equipment)
+    with PowerScaleClient(
+        equipment.management_address or "",
+        equipment.username or "",
+        decrypt_secret(equipment.encrypted_password),
+        equipment.api_port,
+        equipment.verify_ssl,
+        settings.get("api_version", "3"),
+    ) as client:
+        return client.get_nas_options()
 
 
 @router.get("/integrations/powermax/{equipment_id}/options")

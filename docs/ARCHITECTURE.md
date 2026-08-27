@@ -9,7 +9,7 @@ In this scope, “presenting a LUN” means registering/reconciling host WWPNs i
 ## Domains
 
 1. **Inventory:** equipment, endpoints, encrypted credentials, device-specific settings and WWNs.
-2. **Discovery:** real-time PowerStore block, PowerMax, PowerStore NAS and PPDM option retrieval.
+2. **Discovery:** real-time PowerStore block, PowerMax, PowerStore NAS, PowerScale and PPDM option retrieval.
 3. **Orchestration:** persistent, sequential and audited workflows.
 4. **Integrations:** REST clients with sessions, TLS, timeouts and normalized errors.
 5. **Zoning:** an isolated Ansible process whose temporary inventory is removed when it finishes.
@@ -67,6 +67,7 @@ There is no distributed transaction across the four products. Each step is confi
 - PowerStore: `/api/rest` base URI, with `DELL-EMC-TOKEN` for mutations.
 - PowerMax: Unisphere `/univmax/restapi/{version}` with Basic Auth and a configured Symmetrix ID.
 - PowerStore NAS: the same PowerStore REST session and CSRF token as block resources, using file-service endpoints.
+- PowerScale: OneFS PAPI with Basic Auth; SMB and NFS share paths are reconciled before PPDM discovery.
 - PPDM NAS: a NAS asset source and a deployed NAS Protection Engine are prerequisites for live protection.
 - PPDM: v2 login; v2 policies through 19.16 and v3 from 19.17 onward, following Dell’s published transition.
 - Fabric OS: REST login, `brocade-zone` YANG module, ZoneDB checksum and different actions for FOS 9.1 and 9.2+.

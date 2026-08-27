@@ -40,6 +40,12 @@ The client keeps a Basic Auth session and calls `GET /api/rest/cluster` before a
 - NAS workflows do not configure FC hosts or Brocade zoning. They discover the resulting share in PPDM and assign it to a centralized NAS policy.
 - `GET /api/integrations/ppdm/{id}/nas-options` exposes NAS policies and Protection Engines. A live NAS policy workflow must use an engine deployed and reachable from the NAS.
 
+## PowerScale
+
+- `GET /api/integrations/powerscale/{id}/options` reads OneFS SMB shares, NFS exports and access zones.
+- The adapter uses `/platform/{version}/protocols/smb/shares` and `/platform/{version}/protocols/nfs/exports` with Basic Auth.
+- `NAS_SHARE` reconciles the share by name/path and preserves existing shares; a missing share is created with `raw_overrides` available for zone and permission fields.
+
 ## PPDM
 
 - Login: `POST /api/v2/login`, then use `access_token` as a Bearer token.

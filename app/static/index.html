@@ -105,7 +105,7 @@
 
         <section id="page-inventory" class="page">
           <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
-          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
@@ -223,7 +223,7 @@
         <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
         <input id="equipmentId" type="hidden" />
         <div class="form-grid two">
-          <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+          <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
           <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
           <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
           <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>
@@ -241,6 +241,7 @@
           <label class="powermax-setting hidden">Versão da API<input id="equipmentApiVersion" value="100" placeholder="100 ou 92" /></label>
           <label class="powermax-setting hidden">SRP padrão<input id="equipmentDefaultSrp" placeholder="SRP_1" /></label>
           <label class="powermax-setting hidden">SLO padrão<input id="equipmentDefaultSlo" placeholder="Diamond" /></label>
+          <label class="powerscale-setting hidden">Versão PAPI<input id="equipmentOnefsApiVersion" value="3" placeholder="3" /></label>
         </div>
         <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
         <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>

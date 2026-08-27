@@ -23,6 +23,7 @@ from app.services.ansible_runner import run_brocade_zoning
 from app.services.powermax import PowerMaxClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
+from app.services.powerscale import PowerScaleClient
 from app.services.ppdm import PPDMClient
 
 STEP_NAMES = [
@@ -127,7 +128,13 @@ class WorkflowRunner:
         if resource_type == "POWERMAX_STORAGE_GROUP":
             storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERMAX)
         elif resource_type in {"NAS_SHARE", "NAS_DATA"}:
-            storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE_NAS)
+            storage = self.db.get(Equipment, self.request["storage_id"])
+            if not storage:
+                raise ValueError(f"equipamento {self.request['storage_id']} não encontrado")
+            if storage.type not in {"POWERSTORE_NAS", "POWERSCALE"}:
+                raise ValueError(
+                    f"equipamento {storage.name} é {storage.type}, esperado POWERSTORE_NAS ou POWERSCALE"
+                )
         else:
             storage = self._get_equipment(self.request["storage_id"], EquipmentType.POWERSTORE)
         hosts = [
@@ -235,12 +242,16 @@ class WorkflowRunner:
                 }
         else:
             if is_nas:
-                with PowerStoreNASClient(
+                client_type = PowerScaleClient if storage.type == "POWERSCALE" else PowerStoreNASClient
+                with client_type(
                     storage.management_address or "",
                     storage.username or "",
                     decrypt_secret(storage.encrypted_password),
                     storage.api_port,
                     storage.verify_ssl,
+                    equipment_settings(storage).get("api_version", "3")
+                    if storage.type == "POWERSCALE"
+                    else None,
                 ) as client:
                     created = client.ensure_share(volume)
             elif is_powermax_group:
@@ -481,12 +492,16 @@ class WorkflowRunner:
         storage: Equipment = self.context["storage"]
         if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
             storage = self.context["storage"]
-            with PowerStoreNASClient(
+            client_type = PowerScaleClient if storage.type == "POWERSCALE" else PowerStoreNASClient
+            with client_type(
                 storage.management_address or "",
                 storage.username or "",
                 decrypt_secret(storage.encrypted_password),
                 storage.api_port,
                 storage.verify_ssl,
+                equipment_settings(storage).get("api_version", "3")
+                if storage.type == "POWERSCALE"
+                else None,
             ) as client:
                 volume = client.get_share(
                     self.workflow.volume_id or "",

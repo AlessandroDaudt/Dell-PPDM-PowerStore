@@ -178,7 +178,7 @@ function updateResourceType() {
 function updateStorageResourceDefaults() {
   const selected = $("#storageId").selectedOptions[0];
   if (selected?.dataset.type === "POWERMAX") $("#resourceType").value = "POWERMAX_STORAGE_GROUP";
-  else if (selected?.dataset.type === "POWERSTORE_NAS") $("#resourceType").value = "NAS_SHARE";
+  else if (["POWERSTORE_NAS", "POWERSCALE"].includes(selected?.dataset.type)) $("#resourceType").value = "NAS_SHARE";
   else if (["POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value)) $("#resourceType").value = "VOLUME";
   updateResourceType();
 }
@@ -200,7 +200,8 @@ function updateEquipmentFields() {
   $$(".brocade-setting").forEach((field) => field.classList.toggle("hidden", type !== "BROCADE"));
   $$(".host-setting").forEach((field) => field.classList.toggle("hidden", type !== "HOST"));
   $$(".powermax-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERMAX"));
-  if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : "443";
+  $$(".powerscale-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERSCALE"));
+  if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : type === "POWERSCALE" ? "8080" : "443";
 }
 
 function openEquipment(item = null) {
@@ -224,6 +225,7 @@ function openEquipment(item = null) {
     $("#equipmentApiVersion").value = item.settings.api_version || "100";
     $("#equipmentDefaultSrp").value = item.settings.default_srp_id || "";
     $("#equipmentDefaultSlo").value = item.settings.default_slo_id || "";
+    $("#equipmentOnefsApiVersion").value = item.settings.api_version || "3";
     $("#equipmentWwns").value = item.wwns.map((wwn) => `${wwn.value}, ${wwn.label || ""}, ${wwn.fabric}, ${wwn.role}`).join("\n");
     updateEquipmentFields();
   }
@@ -249,6 +251,8 @@ async function saveEquipment(event) {
     api_version: $("#equipmentApiVersion").value || "100",
     default_srp_id: $("#equipmentDefaultSrp").value || null,
     default_slo_id: $("#equipmentDefaultSlo").value || null,
+  } : type === "POWERSCALE" ? {
+    api_version: $("#equipmentOnefsApiVersion").value || "3",
   } : {};
   const body = {
     type, name: $("#equipmentName").value, management_address: $("#equipmentAddress").value || null,
@@ -287,7 +291,9 @@ async function syncPowerStore() {
   const id = $("#storageId").value; if (!id) return toast("Selecione um PowerStore.", true);
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Sincronizando…";
   try {
-    state.powerstoreOptions = await api(`/api/integrations/powerstore/${id}/options`);
+    const type = $("#storageId").selectedOptions[0]?.dataset.type;
+    const endpoint = type === "POWERSCALE" ? "powerscale" : "powerstore";
+    state.powerstoreOptions = await api(`/api/integrations/${endpoint}/${id}/options`);
     fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
     fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");
     fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "Sem política local");
