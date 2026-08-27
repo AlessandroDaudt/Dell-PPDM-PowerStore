@@ -98,6 +98,26 @@ class UnityClient:
         info = self._bootstrap_session()
         return {"ok": True, "system": "Dell Unity", "name": info.get("name"), "id": info.get("id")}
 
+    def _status_optional(self, resource: str) -> Any:
+        try:
+            return self._list(resource)
+        except ExternalAPIError as exc:
+            if exc.status_code in {400, 404, 405, 501}:
+                return {"available": False, "reason": str(exc)}
+            raise
+
+    def get_status(self) -> dict[str, Any]:
+        system = self._bootstrap_session()
+        metrics = {
+            "system": system,
+            "capacity": self._status_optional("systemCapacity"),
+            "disks": self._status_optional("disk"),
+            "storage_resources": self._status_optional("storageResource"),
+            "filesystems": self._status_optional("filesystem"),
+            "network": self._status_optional("mgmtInterface"),
+        }
+        return {"state": "OK", "metrics": metrics, "error": None}
+
     def _list(self, resource: str) -> list[dict[str, Any]]:
         return self._entries(self.request("GET", f"/api/types/{resource}/instances?compact=true"))
 

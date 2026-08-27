@@ -15,6 +15,11 @@ The interactive OpenAPI specification is available at `http://<sanflow>:8080/doc
 | `POST` | `/api/workflows` | starts a dry-run or live execution |
 | `GET` | `/api/workflows/{id}` | workflow state and per-step details |
 | `GET` | `/api/audit` | audit trail |
+| `GET` | `/api/status` | newest persisted status sample for each component |
+| `GET` | `/api/status/history` | status history for up to 30 days |
+| `POST` | `/api/status/collect` | immediate status collection and retention cleanup |
+
+Status collection runs in the background every minute by default. The response keeps normalized fields and the complete vendor payload, so firmware-specific metrics remain available even when they are not in the common table. See [STATUS.md](STATUS.md) for retention, permissions and the full equipment matrix.
 
 ## PowerStore
 
@@ -87,3 +92,11 @@ Group presentation and [examples/provision-nas-request.json](examples/provision-
 for share publication plus Data Domain/Protection Engine selection. Equipment IDs are internal to SANFlow.
 
 See [examples/provision-cisco-request.json](examples/provision-cisco-request.json) for a block request using Cisco MDS Fibre Channel zoning.
+
+## Status adapters
+
+- PowerStore status reads cluster, hardware/node, network, storage-container and FC/Ethernet resources.
+- PowerMax status reads the configured Symmetrix system, SRP and Storage Group resources.
+- PowerScale and Unity status use the capacity, disk, network and filesystem/statistics resources available in the installed API version.
+- Direct Data Domain status uses the embedded `/rest/v1.0` API, including capacity, filesystems, MTrees and supported network/throughput statistics.
+- Brocade status uses Fabric OS REST/YANG Fibre Channel interfaces and interface statistics. Cisco MDS status uses NX-API `cli_show_ascii` commands for interface, counters, transceiver, environment and version.

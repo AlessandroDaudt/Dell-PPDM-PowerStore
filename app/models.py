@@ -1,7 +1,7 @@
 import enum
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -18,6 +18,7 @@ class EquipmentType(str, enum.Enum):
     POWERSCALE = "POWERSCALE"
     UNITY = "UNITY"
     CISCO_MDS = "CISCO_MDS"
+    DATA_DOMAIN = "DATA_DOMAIN"
     PPDM = "PPDM"
     BROCADE = "BROCADE"
     HOST = "HOST"
@@ -126,3 +127,29 @@ class AuditEvent(Base):
     outcome: Mapped[str] = mapped_column(String(32))
     details_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StatusSample(Base):
+    __tablename__ = "status_samples"
+    __table_args__ = (
+        UniqueConstraint(
+            "equipment_id",
+            "component_key",
+            "sampled_at",
+            name="uq_status_sample_component_minute",
+        ),
+        Index("ix_status_samples_sampled_at", "sampled_at"),
+        Index("ix_status_samples_equipment_sampled_at", "equipment_id", "sampled_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    equipment_id: Mapped[int] = mapped_column(
+        ForeignKey("equipment.id", ondelete="CASCADE"), index=True
+    )
+    component_key: Mapped[str] = mapped_column(String(255), default="equipment")
+    component_name: Mapped[str] = mapped_column(String(255))
+    component_type: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(32), default="UNKNOWN")
+    sampled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    metrics_json: Mapped[str] = mapped_column(Text, default="{}")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

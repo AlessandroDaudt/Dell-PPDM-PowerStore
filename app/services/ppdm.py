@@ -124,6 +124,35 @@ class PPDMClient:
         version = self.get_version()
         return {"ok": True, "system": "PPDM", "version": version}
 
+    def _status_optional(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        try:
+            return self.request("GET", path, params=params)
+        except ExternalAPIError as exc:
+            if exc.status_code in {400, 404, 405, 501}:
+                return {"available": False, "reason": str(exc)}
+            raise
+
+    def get_status(self) -> dict[str, Any]:
+        version = self.get_version()
+        data_domains = self._content(
+            self.request(
+                "GET",
+                "/api/v2/storage-systems",
+                params={"filter": 'type eq "DATA_DOMAIN_SYSTEM"', "pageSize": 500},
+            )
+        )
+        metrics = {
+            "version": version,
+            "data_domains": data_domains,
+            "capacity": self._status_optional(
+                "/api/v2/protection-storage-metrics", params={"pageSize": 500}
+            ),
+            "network": self._status_optional(
+                "/api/v2/storage-system-metrics", params={"pageSize": 500}
+            ),
+        }
+        return {"state": "OK", "metrics": metrics, "error": None}
+
     def get_options(self) -> dict[str, Any]:
         version = self.get_version()
         api = "v3" if self.uses_v3(version) else "v2"

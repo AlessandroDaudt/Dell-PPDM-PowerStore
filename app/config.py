@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     ansible_timeout: int = 600
     ppdm_discovery_timeout: int = 180
     ppdm_discovery_interval: int = 10
+    status_sample_interval_seconds: int = Field(default=60, ge=10, le=3600)
+    status_retention_days: int = Field(default=30, ge=1, le=3650)
 
 
 @lru_cache

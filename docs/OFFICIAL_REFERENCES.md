@@ -28,6 +28,15 @@ Research performed in August 2026. The documentation embedded in each appliance 
 - [Cisco MDS 9000 Series NX-API Zoning Reference](https://developer.cisco.com/cisco-mds-9000-series-nx-api-reference/latest/zoning/) — official `cli_show_ascii` and `cli_conf` zoning examples for zones, zonesets and activation.
 - [Cisco MDS NX-OS Programmability Guide](https://www.cisco.com/c/en/us/td/docs/dcn/mds9000/sw/9x/programmability/cisco-mds-9000-nx-os-programmability-guide-9x/nx_api.html) — NX-API endpoint, payload and transport configuration.
 
+## Dell PowerProtect Data Domain REST
+
+- [Embedded REST API for DD and DDMC](https://www.dell.com/support/kbdoc/en-bw/000203754/data-domain-how-to-use-the-embedded-rest-api-for-dd-and-ddmc) — authentication with `/rest/v1.0/auth` and the `X-DD-AUTH-TOKEN` header.
+- [PowerProtect DD REST API 7.11](https://developer.dell.com/api/export-pdf/4804537/version/7.11.0?uuid=4118) — `/rest/v1.0` resource reference used for system, capacity, filesystem and MTree status calls.
+
+## Cisco MDS status reference
+
+- [Cisco MDS 9000 NX-API Interface Reference](https://developer.cisco.com/cisco-mds-9000-series-nx-api-reference/latest/interface/) — interface status, rate, error, txwait and buffer-credit fields exposed by the interface model.
+
 ## Derived decisions
 
 - Keep a persistent PowerStore session and obtain CSRF before every mutation.
@@ -35,3 +44,4 @@ Research performed in August 2026. The documentation embedded in each appliance 
 - Retrieve DDs from `/api/v2/storage-systems` and storage units from `/api/v2/datadomain-mtrees`.
 - Zone WWPN members within the same fabric, preserve cfg entries and obtain a checksum before save/activation.
 - Use the Cisco MDS `/ins` endpoint with JSON `ins_api` payloads; read the current VSAN state before sending `cli_conf` changes and activate a zoneset only when requested.
+- Keep status collection read-only, persist samples at minute precision, preserve raw vendor responses and prune samples older than the configured retention period.

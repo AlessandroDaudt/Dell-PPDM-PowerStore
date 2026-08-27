@@ -114,6 +114,8 @@ stateDiagram-v2
 - PowerStore NAS file-system and share discovery/reconciliation, with PPDM NAS policy assignment through a selected Protection Engine.
 - PowerScale SMB/NFS share discovery and reconciliation through OneFS PAPI, with the same PPDM NAS Protection Engine workflow.
 - Dell Unity CIFS/NFS share discovery and reconciliation through Unisphere REST, with CSRF protection and the same PPDM NAS Protection Engine workflow.
+- Status menu with persisted capacity, disk, health, network and Fibre Channel telemetry for arrays, Data Domain and switches; switch payloads retain attenuation, errors, counters and buffer credits when the vendor exposes them.
+- Automatic status sampling every minute, visual refresh every 15 seconds and retention cleanup after 30 days (configurable through environment variables).
 - Hourly, daily, weekly or monthly schedules; windows, retention, Retention Lock, consistency and backup level.
 - Live inspection of existing policy objectives; Snapshot, Replication and Cloud Tier can be required and defined through version-specific JSON without silently ignoring incomplete selections.
 - End-to-end dry-run, live execution and detailed per-step history.
@@ -180,6 +182,9 @@ app/
     ppdm.py                 PPDM v2/v3 REST client
     ansible_runner.py       controlled Brocade playbook execution
     cisco_mds.py            Cisco MDS NX-API zoning client
+    datadomain.py           Data Domain REST status client
+    brocade.py              Brocade FOS status client
+    status_monitor.py       periodic status sampling and retention
     orchestrator.py         provisioning state machine
   static/                   web interface
 playbooks/
@@ -198,6 +203,7 @@ tests/                      unit tests with mocked APIs
 - Cisco MDS zoning supports standard zones and zonesets in a VSAN. Peer zoning is currently limited to Brocade.
 - Volumes already associated with a local PowerStore policy may be incompatible with PPDM protection depending on the version. Do not combine PPDM-integrated and PowerStore-integrated remote backup.
 - Provisioning is progressive and has no automatic destructive rollback. See [docs/SECURITY.md](docs/SECURITY.md) and [docs/OPERATIONS.md](docs/OPERATIONS.md).
+- Status is observational: it does not change storage, switch or Data Domain configuration. Metrics unavailable in a firmware/API version are shown as unavailable and are not fabricated.
 
 ## Documentation
 
@@ -207,6 +213,7 @@ tests/                      unit tests with mocked APIs
 - [API and integrations](docs/API.md)
 - [Security](docs/SECURITY.md)
 - [Official references consulted](docs/OFFICIAL_REFERENCES.md)
+- [Status monitoring and telemetry](docs/STATUS.md)
 
 ## Primary official sources
 

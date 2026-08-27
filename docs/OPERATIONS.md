@@ -21,6 +21,14 @@ docker compose ps
 
 Back up the `sanflow_data` volume. It contains the database and encrypted credentials; restoring it also requires the same `APP_SECRET_KEY`.
 
+## 2.1 Status monitoring
+
+Open **Status** after registering the infrastructure. The first collection is started with the application; **Coletar agora** runs an immediate cycle. The default persistent sample interval is one minute and the browser refreshes the current view every 15 seconds. Historical samples are retained for 30 days and are automatically deleted after that period.
+
+For Data Domain disk and network usage, register the Data Domain endpoint directly as `DATA_DOMAIN` using its embedded REST port (3009 by default) and a read-only account. PPDM-discovered Data Domains remain visible, but only PPDM-returned fields are available. On switches, inspect the common port table and expand **Todos os dados coletados** for vendor-specific attenuation, optical power, error counters, txwait and buffer-credit fields.
+
+If a metric is not supported by the firmware or API version, the dashboard labels it `N/A` and preserves the reason in the raw details. This is expected and is different from a collection error.
+
 ## 3. Inventory registration
 
 ### PowerStore

@@ -1,5 +1,6 @@
 import json
 import secrets
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import get_settings
 from app.crypto import decrypt_secret, encrypt_secret
 from app.database import get_db
-from app.models import WWN, AuditEvent, Equipment, Workflow
+from app.models import WWN, AuditEvent, Equipment, StatusSample, Workflow
 from app.schemas import (
     EquipmentCreate,
     EquipmentRead,
@@ -21,12 +22,14 @@ from app.schemas import (
     WWNRead,
 )
 from app.services.cisco_mds import CiscoMDSClient
+from app.services.datadomain import DataDomainClient
 from app.services.orchestrator import create_workflow, equipment_settings, run_workflow
 from app.services.powermax import PowerMaxClient
 from app.services.powerscale import PowerScaleClient
 from app.services.powerstore import PowerStoreClient
 from app.services.powerstore_nas import PowerStoreNASClient
 from app.services.ppdm import PPDMClient
+from app.services.status_monitor import status_monitor
 from app.services.unity import UnityClient
 
 router = APIRouter(prefix="/api")
@@ -132,6 +135,71 @@ def dashboard(_: AuthUser, db: DbSession):
         "recent_workflows": [workflow_read(item).model_dump(mode="json") for item in recent],
         "default_dry_run": get_settings().default_dry_run,
     }
+
+
+def _status_read(sample: StatusSample) -> dict:
+    try:
+        metrics = json.loads(sample.metrics_json or "{}")
+    except json.JSONDecodeError:
+        metrics = {}
+    return {
+        "id": sample.id,
+        "equipment_id": sample.equipment_id,
+        "component_key": sample.component_key,
+        "component_name": sample.component_name,
+        "component_type": sample.component_type,
+        "state": sample.state,
+        "sampled_at": sample.sampled_at,
+        "metrics": metrics,
+        "error": sample.error,
+    }
+
+
+@router.get("/status")
+def current_status(_: AuthUser, db: DbSession):
+    """Return the newest persisted sample for every equipment component."""
+    rows = db.execute(
+        select(StatusSample)
+        .join(Equipment, Equipment.id == StatusSample.equipment_id)
+        .where(Equipment.type != "HOST")
+        .order_by(desc(StatusSample.sampled_at), desc(StatusSample.id))
+    ).scalars()
+    latest: dict[tuple[int, str], StatusSample] = {}
+    for sample in rows:
+        latest.setdefault((sample.equipment_id, sample.component_key), sample)
+    return {
+        "sample_interval_seconds": get_settings().status_sample_interval_seconds,
+        "retention_days": get_settings().status_retention_days,
+        "systems": [_status_read(sample) for sample in latest.values()],
+    }
+
+
+@router.get("/status/history")
+def status_history(
+    _: AuthUser,
+    db: DbSession,
+    equipment_id: int | None = Query(default=None, ge=1),
+    component_key: str | None = Query(default=None, max_length=255),
+    hours: int = Query(default=24, ge=1, le=720),
+    limit: int = Query(default=5000, ge=1, le=10000),
+):
+    cutoff = datetime.now(UTC) - timedelta(hours=hours)
+    statement = select(StatusSample).where(StatusSample.sampled_at >= cutoff)
+    if equipment_id is not None:
+        statement = statement.where(StatusSample.equipment_id == equipment_id)
+    if component_key:
+        statement = statement.where(StatusSample.component_key == component_key)
+    samples = db.scalars(statement.order_by(StatusSample.sampled_at).limit(limit)).all()
+    return {
+        "hours": hours,
+        "retention_days": get_settings().status_retention_days,
+        "samples": [_status_read(sample) for sample in samples],
+    }
+
+
+@router.post("/status/collect")
+def collect_status(_: AuthUser):
+    return status_monitor.collector.collect_now()
 
 
 @router.get("/equipment", response_model=list[EquipmentRead])
@@ -295,6 +363,15 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
             return client.test_connection()
     if equipment.type == "PPDM":
         with PPDMClient(
+            equipment.management_address or "",
+            equipment.username or "",
+            password,
+            equipment.api_port,
+            equipment.verify_ssl,
+        ) as client:
+            return client.test_connection()
+    if equipment.type == "DATA_DOMAIN":
+        with DataDomainClient(
             equipment.management_address or "",
             equipment.username or "",
             password,

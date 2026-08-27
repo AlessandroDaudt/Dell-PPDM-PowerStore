@@ -13,7 +13,8 @@ In this scope, “presenting a LUN” means registering/reconciling host WWPNs i
 3. **Orchestration:** persistent, sequential and audited workflows.
 4. **Integrations:** REST clients with sessions, TLS, timeouts and normalized errors.
 5. **Zoning:** a Fibre Channel adapter layer; Brocade uses an isolated Ansible process, while Cisco MDS uses direct NX-API calls.
-6. **Interface:** a SPA with no Node toolchain, served by the same container.
+6. **Status monitoring:** a background collector samples supported equipment every minute, stores normalized plus raw vendor metrics and deletes samples older than the configured retention window.
+7. **Interface:** a SPA with no Node toolchain, served by the same container.
 
 ## Data model
 
@@ -45,6 +46,14 @@ erDiagram
       string status
       json details
     }
+    EQUIPMENT ||--o{ STATUS_SAMPLE : has
+    STATUS_SAMPLE {
+      string component_key
+      string component_type
+      string state
+      datetime sampled_at
+      json metrics
+    }
 ```
 
 ## Idempotency
@@ -58,6 +67,7 @@ erDiagram
 - A PowerMax Storage Group is presented through a masking view that binds the Storage Group, a Port Group and each selected host. Missing PowerMax hosts are created from the registered initiator WWPNs.
 - The playbook reads the defined configuration, does not recreate existing zones and preserves cfg members. Cisco MDS reads the current VSAN zone/zoneset, adds only missing PWWN or zoneset members and activates only when requested.
 - PPDM assignment runs after asset discovery. A new run should use an existing policy or a new policy name to avoid duplicates.
+- Status samples are idempotent per `(equipment_id, component_key, sampled_at-minute)`. A failed poll creates an `ERROR` sample with the error message, while optional vendor endpoints are retained as `available: false` inside the raw metrics.
 
 ## Consistency and compensation
 
@@ -74,3 +84,4 @@ There is no distributed transaction across the four products. Each step is confi
 - PPDM: v2 login; v2 policies through 19.16 and v3 from 19.17 onward, following Dell’s published transition.
 - Fabric OS: REST login, `brocade-zone` YANG module, ZoneDB checksum and different actions for FOS 9.1 and 9.2+.
 - Cisco MDS: NX-API `/ins` with `cli_show_ascii` for inspection and `cli_conf` for VSAN zone/zoneset reconciliation. The adapter supports standard zoning; peer zoning remains Brocade-only.
+- Status: PowerStore, PowerMax, PowerStore NAS, PowerScale, Unity, PPDM, direct Data Domain, Brocade and Cisco MDS have independent status adapters. Direct Data Domain registration is required for DDOS disk/network telemetry; PPDM-discovered Data Domains remain visible with the data PPDM exposes.

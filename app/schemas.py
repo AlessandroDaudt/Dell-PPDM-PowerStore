@@ -46,6 +46,7 @@ class EquipmentCreate(BaseModel):
         "POWERSCALE",
         "UNITY",
         "CISCO_MDS",
+        "DATA_DOMAIN",
         "PPDM",
         "BROCADE",
         "HOST",
@@ -71,6 +72,7 @@ class EquipmentCreate(BaseModel):
                 "POWERSCALE",
                 "UNITY",
                 "CISCO_MDS",
+                "DATA_DOMAIN",
                 "PPDM",
                 "BROCADE",
             }

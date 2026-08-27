@@ -115,6 +115,56 @@ class CiscoMDSClient:
             )
         return result
 
+    @staticmethod
+    def _parse_port_blocks(body: Any) -> list[dict[str, Any]]:
+        """Parse common NX-OS interface blocks while retaining the raw command output."""
+        if not isinstance(body, str):
+            return []
+        ports: list[dict[str, Any]] = []
+        current: dict[str, Any] | None = None
+        for line in body.splitlines():
+            match = re.match(r"^\s*((?:fc|Ethernet|eth)\S+)\s+is\s+(up|down)", line, re.I)
+            if match:
+                current = {"name": match.group(1), "status": match.group(2).upper()}
+                ports.append(current)
+                continue
+            if current is None or ":" not in line:
+                continue
+            key, value = line.strip().split(":", 1)
+            key = re.sub(r"[^a-zA-Z0-9]+", "_", key).strip("_").lower()
+            if key:
+                current[key] = value.strip()
+        return ports
+
+    def _show_status_command(self, command: str) -> Any:
+        try:
+            return self.show(command)
+        except ExternalAPIError as exc:
+            return {"available": False, "reason": str(exc)}
+
+    def get_status(self) -> dict[str, Any]:
+        commands = {
+            "interface_brief": "show interface brief",
+            "interface_counters": "show interface counters detailed",
+            "transceiver": "show interface transceiver details",
+            "environment": "show environment",
+            "version": "show version",
+        }
+        raw = {name: self._show_status_command(command) for name, command in commands.items()}
+        errors = {
+            name: value["reason"]
+            for name, value in raw.items()
+            if isinstance(value, dict) and value.get("available") is False
+        }
+        ports = self._parse_port_blocks(raw.get("interface_counters"))
+        if not ports:
+            ports = self._parse_port_blocks(raw.get("interface_brief"))
+        return {
+            "state": "OK" if not errors else "DEGRADED" if len(errors) < len(raw) else "ERROR",
+            "metrics": {"ports": ports, "raw": raw},
+            "error": "; ".join(f"{key}: {value}" for key, value in errors.items()) or None,
+        }
+
     @classmethod
     def _validate_token(cls, value: str, label: str) -> str:
         value = str(value).strip()

@@ -70,6 +70,29 @@ class PowerMaxClient:
         version = self.get_version()
         return {"ok": True, "system": "PowerMax", **version}
 
+    def _status_optional(self, path: str) -> Any:
+        try:
+            return self.request("GET", path)
+        except ExternalAPIError as exc:
+            if exc.status_code in {400, 404, 405, 501}:
+                return {"available": False, "reason": str(exc)}
+            raise
+
+    def get_status(self, symmetrix_id: str | None = None) -> dict[str, Any]:
+        self.symmetrix_id = symmetrix_id or self.symmetrix_id
+        if not self.symmetrix_id:
+            raise ValueError("symmetrix_id é obrigatório para status do PowerMax")
+        system = self.request("GET", f"/system/symmetrix/{self.symmetrix_id}")
+        metrics = {
+            "symmetrix_id": self.symmetrix_id,
+            "system": system,
+            "srp": self._status_optional(f"/sloprovisioning/symmetrix/{self.symmetrix_id}/srp"),
+            "storage_groups": self._status_optional(
+                f"/sloprovisioning/symmetrix/{self.symmetrix_id}/storagegroup"
+            ),
+        }
+        return {"state": "OK", "metrics": metrics, "error": None}
+
     def _array_path(self, suffix: str) -> str:
         if not self.symmetrix_id:
             raise ValueError("symmetrix_id é obrigatório para operações PowerMax")

@@ -34,6 +34,7 @@
           <button class="nav-item" data-route="provision"><span>＋</span>Nova LUN</button>
           <button class="nav-item" data-route="workflows"><span>↻</span>Execuções</button>
           <button class="nav-item" data-route="docs"><span>?</span>Documentação</button>
+          <button class="nav-item" data-route="status"><span>STATUS</span>Status</button>
         </nav>
         <div class="sidebar-foot">
           <span class="live-dot"></span>
@@ -106,6 +107,7 @@
         <section id="page-inventory" class="page">
           <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
           <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="UNITY">Dell Unity</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="CISCO_MDS">Cisco MDS</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="filter-row"><button class="filter" data-filter="DATA_DOMAIN">Data Domain</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
@@ -203,6 +205,24 @@
           </form>
         </section>
 
+        <section id="page-status" class="page">
+          <div class="page-intro status-toolbar">
+            <div><p>Capacidade, saúde, rede e portas dos equipamentos monitorados.</p><small id="statusLastUpdate" class="muted">Aguardando a primeira coleta.</small></div>
+            <div><button id="collectStatus" class="button primary">Coletar agora</button><button id="refreshStatus" class="button ghost">Atualizar</button></div>
+          </div>
+          <div id="statusSummary" class="metrics"></div>
+          <div class="status-layout">
+            <section class="panel">
+              <div class="section-heading"><div><p class="eyebrow">TELEMETRIA</p><h3>Storages, Data Domains e switches</h3></div><span class="safe-chip">Amostra por minuto</span></div>
+              <div id="statusSystems" class="status-systems"></div>
+            </section>
+            <section class="panel status-history-panel">
+              <div class="section-heading"><div><p class="eyebrow">HISTÓRICO</p><h3>Últimos 30 dias</h3></div><div class="status-history-controls"><select id="statusHistoryTarget"><option value="">Selecione um componente</option></select><select id="statusHistoryRange"><option value="24">24 horas</option><option value="168">7 dias</option><option value="720">30 dias</option></select></div></div>
+              <div id="statusHistory" class="status-history"></div>
+            </section>
+          </div>
+        </section>
+
         <section id="page-workflows" class="page">
           <div class="page-intro"><p>Acompanhe cada chamada e veja exatamente onde uma execução parou.</p><button id="refreshWorkflows" class="button ghost">↻ Atualizar</button></div>
           <div id="workflowList" class="workflow-list"></div>
@@ -226,7 +246,7 @@
         <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
         <input id="equipmentId" type="hidden" />
         <div class="form-grid two">
-  <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>CISCO_MDS</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+  <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>CISCO_MDS</option><option>DATA_DOMAIN</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
           <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
           <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
           <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>

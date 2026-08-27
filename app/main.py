@@ -12,6 +12,7 @@ from app.api import router
 from app.config import get_settings
 from app.database import Base, engine
 from app.services.base_client import ExternalAPIError
+from app.services.status_monitor import status_monitor
 
 settings = get_settings()
 logging.basicConfig(
@@ -23,7 +24,11 @@ logging.basicConfig(
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     Base.metadata.create_all(bind=engine)
-    yield
+    status_monitor.start()
+    try:
+        yield
+    finally:
+        status_monitor.stop()
 
 
 app = FastAPI(

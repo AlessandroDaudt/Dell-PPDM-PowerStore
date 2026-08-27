@@ -6,6 +6,8 @@ const state = {
   powerstoreOptions: {},
   ppdmOptions: {},
   poller: null,
+  statusPoller: null,
+  status: { systems: [], sample_interval_seconds: 60, retention_days: 30 },
   defaultsApplied: false,
 };
 
@@ -65,8 +67,12 @@ function navigate(route) {
   $("#pageEyebrow").textContent = pageNames[route][0];
   $("#pageTitle").textContent = pageNames[route][1];
   if (route === "workflows") loadWorkflows();
+  if (route === "status") { loadStatus(); startStatusPolling(); }
+  else { clearInterval(state.statusPoller); state.statusPoller = null; }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
+
+pageNames.status = ["MONITORAMENTO", "Status"];
 
 function statusBadge(status) {
   const labels = { COMPLETED: "CONCLUÍDO", FAILED: "FALHOU", RUNNING: "EM EXECUÇÃO", PENDING: "PENDENTE" };
@@ -201,7 +207,7 @@ function updateEquipmentFields() {
   $$(".powerscale-setting").forEach((field) => field.classList.toggle("hidden", type !== "POWERSCALE"));
   $$(".unity-setting").forEach((field) => field.classList.toggle("hidden", type !== "UNITY"));
   $$(".cisco-setting").forEach((field) => field.classList.toggle("hidden", type !== "CISCO_MDS"));
-  if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : type === "POWERSCALE" ? "8080" : "443";
+  if (!$("#equipmentId").value) $("#equipmentPort").value = type === "PPDM" ? "8443" : type === "POWERSCALE" ? "8080" : type === "DATA_DOMAIN" ? "3009" : "443";
 }
 
 function openEquipment(item = null) {
@@ -476,6 +482,160 @@ async function submitProvision(event) {
   finally { submit.disabled = false; submit.textContent = "Executar fluxo completo →"; }
 }
 
+function scalarMetric(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "string") {
+    const number = Number(value.replace(/,/g, ""));
+    return Number.isFinite(number) ? number : value;
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    for (const key of ["value", "current", "total", "used", "bytes", "size"]) {
+      if (value[key] !== undefined) return scalarMetric(value[key]);
+    }
+  }
+  return null;
+}
+
+function findMetric(value, names) {
+  if (value === null || value === undefined) return null;
+  const wanted = names.map((name) => String(name).toLowerCase().replace(/[^a-z0-9]/g, ""));
+  if (typeof value === "object" && !Array.isArray(value)) {
+    for (const [key, item] of Object.entries(value)) {
+      if (wanted.includes(key.toLowerCase().replace(/[^a-z0-9]/g, ""))) return item;
+    }
+    for (const item of Object.values(value)) {
+      const found = findMetric(item, names);
+      if (found !== null && found !== undefined) return found;
+    }
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findMetric(item, names);
+      if (found !== null && found !== undefined) return found;
+    }
+  }
+  return null;
+}
+
+function formatBytes(value) {
+  const number = scalarMetric(value);
+  if (number === null || typeof number !== "number") return "N/A";
+  const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
+  let size = number; let unit = 0;
+  while (Math.abs(size) >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
+  return `${size.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${units[unit]}`;
+}
+
+function formatPercent(value) {
+  const number = scalarMetric(value);
+  if (number === null || typeof number !== "number") return "N/A";
+  return `${number.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+}
+
+function metricText(metrics, byteNames, percentNames, suffix = "") {
+  const bytes = findMetric(metrics, byteNames);
+  if (bytes !== null && typeof scalarMetric(bytes) === "number") return formatBytes(bytes);
+  const percent = findMetric(metrics, percentNames);
+  if (percent !== null && typeof scalarMetric(percent) === "number") return formatPercent(percent);
+  const value = findMetric(metrics, ["value", "current"]);
+  return value === null ? "N/A" : `${scalarMetric(value) ?? value}${suffix}`;
+}
+
+function networkText(metrics) {
+  const bits = scalarMetric(findMetric(metrics, ["rx_rate_bits_ps", "tx_rate_bits_ps", "network_rate_bits_ps"]));
+  if (typeof bits === "number") return `${(bits / 1000000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  const bytes = scalarMetric(findMetric(metrics, ["throughput_bytes_per_second", "network_bytes_per_second"]));
+  if (typeof bytes === "number") return `${((bytes * 8) / 1000000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  const mbps = scalarMetric(findMetric(metrics, ["throughput_mbps", "network_mbps"]));
+  if (typeof mbps === "number") return `${mbps.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  return metricText(metrics, [], ["network_utilization", "network_utilization_percent"]);
+}
+
+function statusPorts(metrics) {
+  const ports = findMetric(metrics, ["ports", "fc_ports", "fibrechannel", "interfaces"]);
+  return Array.isArray(ports) ? ports : [];
+}
+
+function portValue(port, keys) {
+  for (const key of keys) {
+    if (port[key] !== undefined && port[key] !== null && port[key] !== "") return port[key];
+    if (port.statistics && port.statistics[key] !== undefined) return port.statistics[key];
+  }
+  return "—";
+}
+
+function renderStatusPortTable(metrics) {
+  const ports = statusPorts(metrics);
+  if (!ports.length) return `<p class="muted">Portas sem dados estruturados nesta coleta. Consulte os detalhes brutos.</p>`;
+  const rows = ports.slice(0, 200).map((port) => {
+    const name = portValue(port, ["name", "interface", "port", "port_name", "portName"]);
+    const status = portValue(port, ["status", "operational-status", "operational_status", "link_state", "linkState"]);
+    const speed = portValue(port, ["speed", "speed_gbps", "speedGbps"]);
+    const utilization = portValue(port, ["utilization", "utilization_percent", "txwait_percent_1m"]);
+    const attenuation = portValue(port, ["attenuation", "rx_power", "tx_power", "rxPower", "txPower"]);
+    const errors = portValue(port, ["errors", "rx_error", "tx_error", "rx_error_frames", "tx_error_frames"]);
+    const credits = portValue(port, ["buffer_credits", "tx_b2b_credit_remain", "rx_b2b_credit_remain", "tx_b2b_credits", "rx_b2b_credits"]);
+    return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(status)}</td><td>${escapeHtml(speed)}</td><td>${escapeHtml(utilization)}</td><td>${escapeHtml(attenuation)}</td><td>${escapeHtml(errors)}</td><td>${escapeHtml(credits)}</td></tr>`;
+  }).join("");
+  return `<div class="table-scroll"><table class="status-table"><thead><tr><th>Porta</th><th>Status</th><th>Velocidade</th><th>Uso / txwait</th><th>Atenuação / potência</th><th>Erros</th><th>Buffer credits</th></tr></thead><tbody>${rows}</tbody></table></div>${ports.length > 200 ? `<small class="muted">Exibindo 200 de ${ports.length} portas; o payload completo está nos detalhes.</small>` : ""}`;
+}
+
+function statusStateBadge(value) {
+  const stateValue = String(value || "UNKNOWN").toUpperCase();
+  const label = { OK: "OK", DEGRADED: "DEGRADADO", ERROR: "ERRO", UNKNOWN: "SEM DADOS" }[stateValue] || stateValue;
+  return `<span class="status-state ${escapeHtml(stateValue)}">${label}</span>`;
+}
+
+function renderStatusSystem(system) {
+  const metrics = system.metrics || {};
+  const ports = statusPorts(metrics);
+  const network = networkText(metrics);
+  return `<article class="status-system"><div class="status-system-head"><div><span class="type-badge ${escapeHtml(system.component_type)}">${escapeHtml(system.component_type)}</span><h4>${escapeHtml(system.component_name)}</h4><small>${escapeHtml(new Date(system.sampled_at).toLocaleString("pt-BR"))}</small></div>${statusStateBadge(system.state)}</div><div class="status-facts"><span><b>Capacidade</b>${metricText(metrics, ["usable_capacity_bytes", "total_capacity_bytes", "capacity_bytes", "logical_capacity_bytes", "total_bytes"], ["capacity_utilization", "capacity_utilization_percent", "used_percent", "utilization_percent"])}</span><span><b>Uso</b>${metricText(metrics, ["used_bytes", "used_capacity_bytes", "physical_used_bytes"], ["used_percent", "capacity_utilization_percent", "licensed_utilization"])}</span><span><b>Rede</b>${network}</span><span><b>Portas</b>${ports.length || "N/A"}</span></div>${ports.length ? `<div class="status-ports"><h5>Portas e contadores</h5>${renderStatusPortTable(metrics)}</div>` : ""}<details class="status-details"><summary>Todos os dados coletados</summary><pre>${escapeHtml(JSON.stringify(metrics, null, 2))}</pre></details>${system.error ? `<p class="form-error">${escapeHtml(system.error)}</p>` : ""}</article>`;
+}
+
+function renderStatus() {
+  const systems = state.status.systems || [];
+  const healthy = systems.filter((item) => item.state === "OK").length;
+  const errors = systems.filter((item) => ["ERROR", "DEGRADED"].includes(item.state)).length;
+  const cards = [["Componentes", systems.length, "Último estado persistido", "#365cf5"], ["Saudáveis", healthy, "Amostras OK", "#16a1ae"], ["Atenção", errors, "Erro ou métrica parcial", "#e07a25"], ["Retenção", `${state.status.retention_days || 30}d`, `A cada ${state.status.sample_interval_seconds || 60}s`, "#805ad5"]];
+  $("#statusSummary").innerHTML = cards.map(([name, count, caption, color]) => `<article class="metric" style="--metric-color:${color}"><span>${name}</span><strong>${count}</strong><small>${caption}</small></article>`).join("");
+  $("#statusSystems").innerHTML = systems.length ? systems.map(renderStatusSystem).join("") : `<div class="empty-state">Nenhuma amostra disponível. Cadastre um equipamento monitorável ou clique em Coletar agora.</div>`;
+  $("#statusLastUpdate").textContent = systems.length ? `Atualização visual a cada 15s · coleta configurada a cada ${state.status.sample_interval_seconds || 60}s · retenção ${state.status.retention_days || 30} dias` : "Aguardando a primeira coleta.";
+  const target = $("#statusHistoryTarget");
+  const previous = target.value;
+  target.innerHTML = `<option value="">Selecione um componente</option>` + systems.map((item) => `<option value="${item.equipment_id}::${escapeHtml(item.component_key)}">${escapeHtml(item.component_name)} · ${escapeHtml(item.component_type)}</option>`).join("");
+  if ([...target.options].some((option) => option.value === previous)) target.value = previous;
+  if (target.value) loadStatusHistory();
+}
+
+async function loadStatus(options = {}) {
+  try {
+    if (options.collect) await api("/api/status/collect", { method: "POST" });
+    state.status = await api("/api/status");
+    renderStatus();
+  } catch (error) { if (options.collect) toast(error.message, true); }
+}
+
+async function loadStatusHistory() {
+  const target = $("#statusHistoryTarget").value;
+  if (!target) { $("#statusHistory").innerHTML = `<p class="muted">Selecione um componente para consultar as amostras.</p>`; return; }
+  const separator = target.indexOf("::");
+  const equipmentId = target.slice(0, separator);
+  const componentKey = target.slice(separator + 2);
+  const hours = $("#statusHistoryRange").value;
+  try {
+    const result = await api(`/api/status/history?equipment_id=${encodeURIComponent(equipmentId)}&component_key=${encodeURIComponent(componentKey)}&hours=${hours}`);
+    const samples = result.samples || [];
+    $("#statusHistory").innerHTML = samples.length ? `<div class="table-scroll"><table class="status-table history-table"><thead><tr><th>Amostra</th><th>Estado</th><th>Capacidade / uso</th><th>Portas</th><th>Erro</th></tr></thead><tbody>${samples.map((sample) => `<tr><td>${escapeHtml(new Date(sample.sampled_at).toLocaleString("pt-BR"))}</td><td>${statusStateBadge(sample.state)}</td><td>${escapeHtml(metricText(sample.metrics || {}, ["used_bytes", "used_capacity_bytes", "capacity_bytes"], ["used_percent", "capacity_utilization_percent"]))}</td><td>${statusPorts(sample.metrics || {}).length || "—"}</td><td>${escapeHtml(sample.error || "—")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">Nenhuma amostra no período selecionado.</p>`;
+  } catch (error) { toast(error.message, true); }
+}
+
+function startStatusPolling() {
+  clearInterval(state.statusPoller);
+  state.statusPoller = setInterval(() => { if ($("#page-status")?.classList.contains("active")) loadStatus(); }, 15000);
+}
+
 async function loadWorkflows() {
   try { state.workflows = await api("/api/workflows?limit=100"); renderWorkflows(); }
   catch (error) { toast(error.message, true); }
@@ -521,7 +681,7 @@ function bindEvents() {
     try { await api("/api/auth/login", { method: "POST", body: Object.fromEntries(form) }); showApp(); await loadAll(); }
     catch (error) { $("#loginError").textContent = error.message; }
   });
-  $("#logoutButton").addEventListener("click", async () => { await api("/api/auth/logout", { method: "POST" }); showLogin(); });
+  $("#logoutButton").addEventListener("click", async () => { clearInterval(state.statusPoller); state.statusPoller = null; await api("/api/auth/logout", { method: "POST" }); showLogin(); });
   $$(".nav-item").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.route)));
   $$('[data-go]').forEach((button) => button.addEventListener("click", () => navigate(button.dataset.go)));
   $("#addEquipmentButton").addEventListener("click", () => openEquipment());
@@ -541,6 +701,13 @@ function bindEvents() {
   $("#dryRun").addEventListener("change", () => { $("#submitHint").textContent = $("#dryRun").checked ? "O dry-run gera o plano sem modificar a infraestrutura." : "Modo LIVE: mudanças reais serão executadas."; });
   $("#provisionForm").addEventListener("submit", submitProvision);
   $("#refreshWorkflows").addEventListener("click", loadWorkflows);
+  $("#collectStatus").addEventListener("click", async () => {
+    const button = $("#collectStatus"); button.disabled = true; button.textContent = "Coletando...";
+    await loadStatus({ collect: true }); button.disabled = false; button.textContent = "Coletar agora";
+  });
+  $("#refreshStatus").addEventListener("click", () => loadStatus());
+  $("#statusHistoryTarget").addEventListener("change", loadStatusHistory);
+  $("#statusHistoryRange").addEventListener("change", loadStatusHistory);
   document.addEventListener("click", (event) => { const target = event.target.closest(".workflow-open"); if (target) openWorkflow(Number(target.dataset.id)); });
 }
 

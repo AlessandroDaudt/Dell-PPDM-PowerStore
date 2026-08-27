@@ -67,6 +67,31 @@ class PowerScaleClient:
             ),
         }
 
+    def _status_optional(self, path: str) -> Any:
+        try:
+            return self.request("GET", path)
+        except ExternalAPIError as exc:
+            if exc.status_code in {400, 404, 405, 501}:
+                return {"available": False, "reason": str(exc)}
+            raise
+
+    def get_status(self) -> dict[str, Any]:
+        cluster = self.request("GET", "/platform/1/cluster/config")
+        metrics = {
+            "cluster": cluster,
+            "capacity": self._status_optional("/platform/1/cluster/statfs"),
+            "system": self._status_optional(
+                f"/platform/{self.api_version}/statistics/summary/system"
+            ),
+            "network": self._status_optional(
+                f"/platform/{self.api_version}/statistics/summary/protocol"
+            ),
+            "drives": self._status_optional(
+                f"/platform/{self.api_version}/statistics/summary/drive"
+            ),
+        }
+        return {"state": "OK", "metrics": metrics, "error": None}
+
     def _collection(self, data: Any, key: str) -> list[dict[str, Any]]:
         if isinstance(data, dict) and isinstance(data.get(key), list):
             return data[key]

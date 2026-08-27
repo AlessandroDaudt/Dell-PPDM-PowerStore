@@ -79,6 +79,29 @@ class PowerStoreClient:
             "id": cluster.get("id"),
         }
 
+    def _status_optional(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        try:
+            return self.request("GET", path, params=params)
+        except ExternalAPIError as exc:
+            if exc.status_code in {400, 404, 405, 501}:
+                return {"available": False, "reason": str(exc)}
+            raise
+
+    def get_status(self) -> dict[str, Any]:
+        """Return capacity, health, network and port data from the array."""
+        cluster = self._bootstrap_session()
+        metrics = {
+            "cluster": cluster,
+            "appliances": self._status_optional("/api/rest/appliance"),
+            "hardware": self._status_optional("/api/rest/hardware"),
+            "nodes": self._status_optional("/api/rest/node"),
+            "network": self._status_optional("/api/rest/network"),
+            "storage_containers": self._status_optional("/api/rest/storage_container"),
+            "fc_ports": self._status_optional("/api/rest/fc_port"),
+            "eth_ports": self._status_optional("/api/rest/eth_port"),
+        }
+        return {"state": "OK", "metrics": metrics, "error": None}
+
     def get_options(self) -> dict[str, Any]:
         self._bootstrap_session()
         result: dict[str, Any] = {}
