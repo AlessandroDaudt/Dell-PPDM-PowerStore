@@ -123,7 +123,7 @@ function renderInventory() {
   }
   root.innerHTML = filtered.map((item) => `
     <article class="equipment-card">
-      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "Sem endpoint de rede")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
+      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "No network endpoint")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
       <div class="wwn-list">${item.wwns.length ? item.wwns.slice(0, 5).map((wwn) => `<div class="wwn-row"><span>${escapeHtml(wwn.value)}</span><span>${escapeHtml(wwn.fabric)} · ${escapeHtml(wwn.role)}</span></div>`).join("") : `<span class="muted">No WWNs registered</span>`}${item.wwns.length > 5 ? `<small>+${item.wwns.length - 5} WWNs</small>` : ""}</div>
       <div class="card-actions"><button data-action="test" data-id="${item.id}">Test</button><button data-action="edit" data-id="${item.id}">Edit</button><button class="danger" data-action="delete" data-id="${item.id}">Delete</button></div>
     </article>`).join("");
@@ -292,7 +292,7 @@ function fillSelect(id, items, label, placeholder) {
 }
 
 async function syncPowerStore() {
-  const id = $("#storageId").value; if (!id) return toast("Select um PowerStore.", true);
+  const id = $("#storageId").value; if (!id) return toast("Select a storage system.", true);
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Syncing…";
   try {
     const type = $("#storageId").selectedOptions[0]?.dataset.type;
@@ -324,13 +324,13 @@ function updateDdDependentOptions() {
 }
 
 async function syncPpdm() {
-  const id = $("#ppdmId").value; if (!id) return toast("Select um PPDM.", true);
+  const id = $("#ppdmId").value; if (!id) return toast("Select a PPDM system.", true);
   const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     const nas = ["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value);
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/${nas ? "nas-options" : "options"}`);
     fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Select a policy");
-    fillSelect("#dataDomain", state.ppdmOptions.data_domains, (item) => item.name || item.id, "Select um Data Domain");
+    fillSelect("#dataDomain", state.ppdmOptions.data_domains, (item) => item.name || item.id, "Select a Data Domain");
     updateDdDependentOptions();
     fillSelect("#nasProtectionEngine", state.ppdmOptions.protection_engines, (item) => item.name || item.id, "Automatic");
     updateBackupMode();
