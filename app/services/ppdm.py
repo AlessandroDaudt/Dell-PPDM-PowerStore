@@ -542,7 +542,7 @@ class PPDMClient:
                     "/api/v2/assets",
                     None,
                     f"volume {name} did not appear in inventory within {timeout}s; "
-                    "execute a descoberta do PowerStore no PPDM",
+                    "run PowerStore discovery in PPDM",
                 )
             time.sleep(interval)
 
