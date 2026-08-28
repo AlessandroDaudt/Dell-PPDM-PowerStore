@@ -348,7 +348,7 @@ class WorkflowRunner:
                 "planned_requests": [
                     "POST /api/v2/login",
                     "GET /api/v2/assets",
-                    "POST /api/v2|v3/protection-policies (quando CREATE_POLICY)",
+                    "POST /api/v2|v3/protection-policies (when CREATE_POLICY)",
                     f"POST /api/v2/protection-policies/{policy_id}/asset-assignments",
                 ],
             }
