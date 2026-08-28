@@ -271,7 +271,9 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
         return {
             "ok": True,
             "system": "Brocade",
-            "message": "Authentication and zoning are validated by the playbook in dry-run/live mode",
+            "message": (
+                "Authentication and zoning are validated by the playbook in dry-run/live mode"
+            ),
         }
     return {"ok": True, "system": "Host", "wwns": len(equipment.wwns)}
 
