@@ -57,7 +57,7 @@
               <h1>From capacity to backup<br /><em>in one change.</em></h1>
               <p>Validate inventory, create the LUN, present it to hosts, configure the fabrics, and protect the data without switching consoles.</p>
               <div class="hero-actions">
-                <button class="button primary" data-go="provision">Provisionar nova LUN</button>
+                <button class="button primary" data-go="provision">Provision a new LUN</button>
                 <button class="button ghost" data-go="inventory">Review inventory</button>
               </div>
             </div>
@@ -152,7 +152,7 @@
                 <div class="section-heading"><div><p class="eyebrow">CONNECTIVITY</p><h3>Hosts and fabrics</h3></div></div>
                 <div class="selection-columns"><div><label class="label-title">Physical hosts</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Brocade switches</label><div id="brocadeChoices" class="choice-list"></div></div></div>
                 <div class="inline-options">
-                  <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Executar zoning</label>
+                  <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Run zoning</label>
                   <label>Active configuration<input id="zoneConfig" value="SANFLOW_CFG" /></label>
                   <label>Template da zone<input id="zoneTemplate" value="Z_{host}_{storage}_{fabric}" /></label>
                   <label class="check-field"><input id="peerZoning" type="checkbox" /> Peer zoning</label>
@@ -171,7 +171,7 @@
                   <label id="newPolicyField" class="hidden">New policy name<input id="newPolicyName" placeholder="POL_PRD_DAILY" /></label>
                   <label id="dataDomainField" class="hidden">Data Domain<select id="dataDomain"><option value="">Sync PPDM first</option></select></label>
                   <label id="ddInterfaceField" class="hidden">Preferred interface<select id="ddInterface"><option value="">Automatic</option></select></label>
-                  <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto provisionar</option></select></label>
+                  <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto-provision</option></select></label>
                   <label>Frequency<select id="backupFrequency"><option>DAILY</option><option>HOURLY</option><option>WEEKLY</option><option>MONTHLY</option></select></label>
                   <label>UTC start<input id="backupStart" type="time" step="1" value="22:00:00" /></label>
                   <label>Window (hours)<input id="backupDuration" type="number" min="1" max="24" value="8" /></label>

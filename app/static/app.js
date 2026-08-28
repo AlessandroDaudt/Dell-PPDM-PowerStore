@@ -259,7 +259,7 @@ async function handleInventoryAction(event) {
   const item = state.equipment.find((entry) => entry.id === Number(button.dataset.id)); if (!item) return;
   if (button.dataset.action === "edit") openEquipment(item);
   if (button.dataset.action === "test") {
-    button.disabled = true; button.textContent = "Testando…";
+    button.disabled = true; button.textContent = "Testing…";
     try { const result = await api(`/api/equipment/${item.id}/test`, { method: "POST" }); toast(`${item.name}: ${result.message || result.version || "connection valid"}`); }
     catch (error) { toast(error.message, true); }
     finally { button.disabled = false; button.textContent = "Test"; }
@@ -295,12 +295,12 @@ function updateDdDependentOptions() {
   const interfaces = selected?.details?.dataDomain?.preferredInterfaces || [];
   fillSelect("#ddInterface", interfaces.map((item) => ({ id: item.networkName, ...item })), (item) => `${item.networkName}${item.purposes ? ` · ${item.purposes.join(", ")}` : ""}`, "Automatic");
   const units = (state.ppdmOptions.storage_units || []).filter((unit) => !selected || unit.storageSystem?.id === selected.id || unit.storageSystemId === selected.id);
-  fillSelect("#storageUnit", units, (item) => item.name || item.id, "Auto provisionar");
+  fillSelect("#storageUnit", units, (item) => item.name || item.id, "Auto-provision");
 }
 
 async function syncPpdm() {
   const id = $("#ppdmId").value; if (!id) return toast("Select a PPDM.", true);
-  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Consultando…";
+  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/options`);
     fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Select a policy");
@@ -439,7 +439,7 @@ async function loadWorkflows() {
 
 function renderWorkflows() {
   const root = $("#workflowList");
-  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">Nenhum workflow executado.</div>`;
+  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">No workflows have run yet.</div>`;
   root.innerHTML = state.workflows.map((workflow) => `
     <article class="workflow-card"><strong>#${workflow.id}</strong><div><h4>${escapeHtml(workflow.request.volume?.name || "LUN")}</h4><p>${workflow.dry_run ? "DRY-RUN" : "LIVE"} · ${escapeHtml(workflow.current_step || "Completed")}</p></div><div class="step-mini">${workflow.steps.map((step) => `<i class="${step.status}" title="${escapeHtml(step.name)}"></i>`).join("")}</div><div>${statusBadge(workflow.status)} <button class="button compact ghost workflow-open" data-id="${workflow.id}">Details</button></div></article>`).join("");
 }
