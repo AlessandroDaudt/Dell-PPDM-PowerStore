@@ -1,4 +1,4 @@
-# SANFlow Dell
+# San Flow
 
 Web control plane for automating, in one workflow, Dell PowerStore volumes or block volume groups, presentation to physical hosts, Fibre Channel zoning on Brocade switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
 
@@ -25,7 +25,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor O as Operator
-    participant S as SANFlow
+    participant S as San Flow
     participant P as PowerStore
     participant B as Brocade FOS
     participant M as PPDM
@@ -85,7 +85,7 @@ stateDiagram-v2
     FAILED --> Analysis: step detail + audit event
     Analysis --> Retry: correct cause and submit a new request
     note right of FAILED
-      SANFlow does not automatically delete
+      San Flow does not automatically delete
       an already-created volume. Remediation
       is deliberate to prevent data loss.
     end note

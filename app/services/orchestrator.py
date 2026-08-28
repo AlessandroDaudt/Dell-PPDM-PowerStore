@@ -25,11 +25,11 @@ from app.services.powerstore import PowerStoreClient
 from app.services.ppdm import PPDMClient
 
 STEP_NAMES = [
-    "Validar inventário e WWNs",
-    "Criar LUN no storage",
-    "Apresentar LUN aos hosts",
+    "Validate inventory and WWNs",
+    "Create LUN on storage",
+    "Present LUN to hosts",
     "Configurar zoning Brocade",
-    "Configurar proteção no PPDM",
+    "Configure PPDM protection",
     "Verificar resultado ponta a ponta",
 ]
 
@@ -81,7 +81,7 @@ class WorkflowRunner:
         self.workflow = self.db.get(Workflow, workflow_id)
         if not self.workflow:
             self.db.close()
-            raise ValueError(f"workflow {workflow_id} não encontrado")
+            raise ValueError(f"workflow {workflow_id} not found")
         self.request: dict[str, Any] = json.loads(self.workflow.request_json)
         self.context: dict[str, Any] = {}
 
@@ -91,10 +91,10 @@ class WorkflowRunner:
     def _get_equipment(self, equipment_id: int, expected_type: EquipmentType) -> Equipment:
         equipment = self.db.get(Equipment, equipment_id)
         if not equipment:
-            raise ValueError(f"equipamento {equipment_id} não encontrado")
+            raise ValueError(f"equipment {equipment_id} not found")
         if equipment.type != expected_type.value:
             raise ValueError(
-                f"equipamento {equipment.name} é {equipment.type}, esperado {expected_type.value}"
+                f"equipment {equipment.name} is {equipment.type}, expected {expected_type.value}"
             )
         return equipment
 
@@ -141,26 +141,26 @@ class WorkflowRunner:
         for host in hosts:
             initiators = [wwn for wwn in host.wwns if wwn.role == "INITIATOR"]
             if not initiators:
-                raise ValueError(f"host {host.name} não possui WWN iniciador")
+                raise ValueError(f"host {host.name} has no initiator WWN")
         if resource_type == "POWERMAX_STORAGE_GROUP":
             settings = equipment_settings(storage)
             if not settings.get("symmetrix_id"):
-                raise ValueError(f"PowerMax {storage.name} não possui symmetrix_id configurado")
+                raise ValueError(f"PowerMax {storage.name} has no configured symmetrix_id")
         elif self.request["zoning"]["enabled"]:
             targets = [wwn for wwn in storage.wwns if wwn.role == "TARGET"]
             if not targets:
-                raise ValueError(f"PowerStore {storage.name} não possui WWN target")
+                raise ValueError(f"PowerStore {storage.name} has no target WWN")
             fabrics = {wwn.fabric for wwn in targets}
             for switch in brocades:
                 fabric = str(equipment_settings(switch).get("fabric", "A")).upper()
                 if fabric not in fabrics:
                     raise ValueError(
-                        f"não há WWN target do PowerStore para a fabric {fabric} ({switch.name})"
+                        f"no PowerStore target WWN exists for fabric {fabric} ({switch.name})"
                     )
 
         self.context.update(storage=storage, hosts=hosts, brocades=brocades, ppdm=ppdm)
         return (
-            "Inventário validado",
+            "Inventory validated",
             {
                 "storage": storage.name,
                 "hosts": [host.name for host in hosts],
@@ -349,11 +349,11 @@ class WorkflowRunner:
                             )
                         mappings.append({"host": host.name, "host_id": registered["id"], **mapped})
         self.context["mappings"] = mappings
-        return f"LUN apresentada a {len(mappings)} host(s)", {"mappings": mappings}
+        return f"LUN presented to {len(mappings)} host(s)", {"mappings": mappings}
 
     def _zone(self) -> tuple[str, dict[str, Any]]:
         if not self.request["zoning"]["enabled"]:
-            return "Zoning desabilitado pela solicitação", {"skipped": True}
+            return "Zoning disabled by the request", {"skipped": True}
         storage: Equipment = self.context["storage"]
         ansible_switches: list[dict[str, Any]] = []
         zone_names: list[str] = []
@@ -406,7 +406,7 @@ class WorkflowRunner:
                     }
                 )
         if not ansible_switches:
-            raise ValueError("nenhuma combinação válida de WWNs por fabric para criar zonas")
+            raise ValueError("no valid WWN combination per fabric to create zones")
         if self.workflow.dry_run:
             result = {
                 "planned_playbook": str(get_settings().ansible_playbook),
@@ -427,7 +427,7 @@ class WorkflowRunner:
     def _backup(self) -> tuple[str, dict[str, Any]]:
         options = self.request["backup"]
         if options["mode"] == "NONE":
-            return "Proteção PPDM desabilitada pela solicitação", {"skipped": True}
+            return "PPDM protection disabled by the request", {"skipped": True}
         ppdm: Equipment = self.context["ppdm"]
         if self.workflow.dry_run:
             policy_id = options.get("policy_id") or f"dryrun-policy-{self.workflow.id}"
@@ -437,7 +437,7 @@ class WorkflowRunner:
                 "planned_requests": [
                     "POST /api/v2/login",
                     "GET /api/v2/assets",
-                    "POST /api/v2|v3/protection-policies (quando CREATE_POLICY)",
+                    "POST /api/v2|v3/protection-policies (when CREATE_POLICY)",
                     f"POST /api/v2/protection-policies/{policy_id}/asset-assignments",
                 ],
             }
@@ -489,7 +489,7 @@ class WorkflowRunner:
         self.workflow.policy_id = str(policy_id)
         self.db.commit()
         self.context["backup"] = result
-        return "Volume associado à proteção do PPDM", result
+        return "Volume assigned to PPDM protection", result
 
     def _verify(self) -> tuple[str, dict[str, Any]]:
         if self.workflow.dry_run:
@@ -527,7 +527,7 @@ class WorkflowRunner:
                 else:
                     volume = client.get_volume(self.workflow.volume_id or "")
         if not volume.get("id"):
-            raise ValueError("PowerStore não retornou o volume na verificação final")
+            raise ValueError("PowerStore did not return the volume during final verification")
         return (
             "Provisionamento verificado com sucesso",
             {

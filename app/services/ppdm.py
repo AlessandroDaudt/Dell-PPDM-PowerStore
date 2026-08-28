@@ -281,11 +281,13 @@ class PPDMClient:
         if additional_objectives:
             container = "objectives" if v3 else "stages"
             if not isinstance(additional_objectives, list):
-                raise ValueError("raw_overrides.additional_objectives deve ser uma lista")
+                raise ValueError("raw_overrides.additional_objectives must be a list")
             payload.setdefault(container, []).extend(additional_objectives)
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política")
+            raise ExternalAPIError(
+                "PPDM", "POST", endpoint, None, "response did not include a policy ID"
+            )
         return created
 
     def find_powerstore_asset(self, name: str) -> dict[str, Any] | None:
@@ -333,7 +335,7 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"recurso block {name} nÃ£o apareceu no inventÃ¡rio em {timeout}s; "
+                    f"block resource {name} did not appear in inventory within {timeout}s; "
                     "execute a descoberta do storage no PPDM",
                 )
             time.sleep(interval)
@@ -352,8 +354,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"volume {name} não apareceu no inventário em {timeout}s; "
-                    "execute a descoberta do PowerStore no PPDM",
+                    f"volume {name} did not appear in inventory within {timeout}s; "
+                    "trigger PowerStore discovery in PPDM",
                 )
             time.sleep(interval)
 
