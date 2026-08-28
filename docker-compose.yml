@@ -2,8 +2,8 @@ services:
   sanflow:
     build:
       context: .
-    image: sanflow-dell:latest
-    container_name: sanflow-dell
+    image: sanflow:latest
+    container_name: sanflow
     restart: unless-stopped
     env_file:
       - ${SANFLOW_ENV_FILE:-.env}

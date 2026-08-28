@@ -1,4 +1,4 @@
-# SANFlow Dell
+# San Flow
 
 Web control plane for automating, in one workflow, Dell PowerStore LUN creation, presentation to physical hosts, Fibre Channel zoning on Brocade switches and volume assignment to a protection policy in Dell PowerProtect Data Manager (PPDM).
 
@@ -25,7 +25,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor O as Operator
-    participant S as SANFlow
+    participant S as San Flow
     participant P as PowerStore
     participant B as Brocade FOS
     participant M as PPDM
@@ -85,7 +85,7 @@ stateDiagram-v2
     FAILED --> Analysis: step detail + audit event
     Analysis --> Retry: correct cause and submit a new request
     note right of FAILED
-      SANFlow does not automatically delete
+      San Flow does not automatically delete
       an already-created volume. Remediation
       is deliberate to prevent data loss.
     end note
@@ -187,7 +187,7 @@ tests/                      unit tests with mocked APIs
 ## Primary official sources
 
 - [Dell PowerStore REST API Developers Guide](https://www.dell.com/support/manuals/en-us/powerstore-1000/pwrstr-apidevg/reference-content?guid=guid-20ffc160-8ff2-45a7-b678-1a5f7bc75569)
-- [Dell PowerStore API Developer Portal](https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md)
+- [Dell PowerStore API Developer Portl](https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md)
 - [Dell PowerProtect Data Manager Public REST API](https://developer.dell.com/apis/4378)
 - [Dell PPDM Storage Array User Guide](https://www.dell.com/support/manuals/en-us/enterprise-copy-data-management/pp-dm_19.22_storage_array_ug/powerprotect-data-manager-for-storage-arrays?guid=guid-4ea1b71a-e96a-4e53-8c0e-84d4a6d1d258&lang=en-us)
 - [Broadcom SAN Design and Best Practices — REST API/YANG](https://docs.broadcom.com/doc/53-1004781)

@@ -123,7 +123,7 @@ class PowerStoreClient:
         created = self.request("POST", "/api/rest/volume", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PowerStore", "POST", "/api/rest/volume", None, "resposta sem id do volume"
+                "PowerStore", "POST", "/api/rest/volume", None, "response did not include a volume ID"
             )
         return created
 
@@ -162,7 +162,7 @@ class PowerStoreClient:
         created = self.request("POST", "/api/rest/host", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PowerStore", "POST", "/api/rest/host", None, "resposta sem id do host"
+                "PowerStore", "POST", "/api/rest/host", None, "response did not include a host ID"
             )
         return created
 

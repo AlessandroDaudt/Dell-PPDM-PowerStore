@@ -2,9 +2,9 @@
 
 ## Scope
 
-SANFlow is a control plane, not a data plane. It coordinates management systems; I/O and backup traffic continue to flow directly between hosts, PowerStore and PowerProtect DD.
+San Flow is a control plane, not a data plane. It coordinates management systems; I/O and backup traffic continue to flow directly between hosts, PowerStore and PowerProtect DD.
 
-In this scope, “presenting a LUN” means registering/reconciling host WWPNs in PowerStore, creating the mapping and configuring zoning across the fabrics. SCSI rescan, multipath and filesystem work inside the operating system remain host-side activities, so SANFlow does not need SSH credentials for servers.
+In this scope, “presenting a LUN” means registering/reconciling host WWPNs in PowerStore, creating the mapping and configuring zoning across the fabrics. SCSI rescan, multipath and filesystem work inside the operating system remain host-side activities, so San Flow does not need SSH credentials for servers.
 
 ## Domains
 

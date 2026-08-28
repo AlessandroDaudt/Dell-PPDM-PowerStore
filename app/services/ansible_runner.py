@@ -18,7 +18,7 @@ def run_brocade_zoning(
     settings = get_settings()
     playbook = Path(settings.ansible_playbook)
     if not playbook.exists():
-        raise AnsibleExecutionError(f"playbook não encontrado: {playbook}")
+        raise AnsibleExecutionError(f"Playbook not found: {playbook}")
 
     inventory = {
         "all": {
@@ -61,14 +61,14 @@ def run_brocade_zoning(
                 check=False,
             )
         except FileNotFoundError as exc:
-            raise AnsibleExecutionError("ansible-playbook não está instalado") from exc
+            raise AnsibleExecutionError("ansible-playbook is not installed") from exc
         except subprocess.TimeoutExpired as exc:
-            raise AnsibleExecutionError("tempo limite do playbook excedido") from exc
+            raise AnsibleExecutionError("Playbook timeout exceeded") from exc
 
     output = (result.stdout or "")[-12000:]
     errors = (result.stderr or "")[-4000:]
     if result.returncode != 0:
         raise AnsibleExecutionError(
-            f"playbook terminou com código {result.returncode}: {errors or output}"
+            f"Playbook exited with code {result.returncode}: {errors or output}"
         )
     return {"return_code": result.returncode, "output": output}
