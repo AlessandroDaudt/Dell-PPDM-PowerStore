@@ -66,7 +66,7 @@ class PPDMClient:
             )
         data = response_data(response)
         if not isinstance(data, dict) or not data.get("access_token"):
-            raise ExternalAPIError("PPDM", "POST", "/api/v2/login", None, "token ausente")
+            raise ExternalAPIError("PPDM", "POST", "/api/v2/login", None, "token missing")
         self.token = data["access_token"]
         return self.token
 
@@ -275,11 +275,11 @@ class PPDMClient:
         if additional_objectives:
             container = "objectives" if v3 else "stages"
             if not isinstance(additional_objectives, list):
-                raise ValueError("raw_overrides.additional_objectives deve ser uma lista")
+                raise ValueError("raw_overrides.additional_objectives must be a list")
             payload.setdefault(container, []).extend(additional_objectives)
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política")
+            raise ExternalAPIError("PPDM", "POST", endpoint, None, "Response has no policy ID")
         return created
 
     def find_powerstore_asset(self, name: str) -> dict[str, Any] | None:
@@ -314,8 +314,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"volume {name} não apareceu no inventário em {timeout}s; "
-                    "execute a descoberta do PowerStore no PPDM",
+                    f"Volume {name} did not appear in inventory within {timeout}s; "
+                    "trigger PowerStore discovery in PPDM",
                 )
             time.sleep(interval)
 

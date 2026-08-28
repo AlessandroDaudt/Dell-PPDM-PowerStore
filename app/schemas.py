@@ -10,7 +10,7 @@ WWN_HEX = re.compile(r"^[0-9a-fA-F]{16}$")
 def normalize_wwn(value: str) -> str:
     compact = re.sub(r"[^0-9a-fA-F]", "", value or "")
     if not WWN_HEX.fullmatch(compact):
-        raise ValueError("WWN deve conter exatamente 16 dígitos hexadecimais")
+        raise ValueError("WWN must contain exactly 16 hexadecimal digits")
     compact = compact.lower()
     return ":".join(compact[index : index + 2] for index in range(0, 16, 2))
 
@@ -51,9 +51,9 @@ class EquipmentCreate(BaseModel):
     @model_validator(mode="after")
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
-            raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
+            raise ValueError("management address is required for this type")
         if self.type in {"POWERSTORE", "PPDM", "BROCADE"} and not self.username:
-            raise ValueError("usuário de API é obrigatório para este tipo")
+            raise ValueError("API username is required for this type")
         return self
 
 
@@ -78,14 +78,14 @@ class EquipmentRead(BaseModel):
 class VolumeMemberOptions(BaseModel):
     name: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int = Field(ge=1, le=65536)
-    description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    description: str = Field(default="Created by San Flow", max_length=256)
     logical_unit_number: int | None = Field(default=None, ge=0, le=16383)
 
 
 class VolumeOptions(BaseModel):
     name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int | None = Field(default=None, ge=1, le=65536)
-    description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    description: str = Field(default="Created by San Flow", max_length=256)
     resource_type: Literal["VOLUME", "VOLUME_GROUP"] = "VOLUME"
     group_name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     group_description: str | None = Field(default=None, max_length=256)
@@ -100,17 +100,17 @@ class VolumeOptions(BaseModel):
     def validate_resource(self):
         if self.resource_type == "VOLUME_GROUP":
             if not self.group_name:
-                raise ValueError("group_name é obrigatório para VOLUME_GROUP")
+                raise ValueError("group_name is required for VOLUME_GROUP")
             if not self.members:
-                raise ValueError("members é obrigatório para VOLUME_GROUP")
+                raise ValueError("members is required for VOLUME_GROUP")
             names = [member.name.casefold() for member in self.members]
             if len(names) != len(set(names)):
-                raise ValueError("members não pode conter nomes repetidos")
+                raise ValueError("members cannot contain duplicate names")
         else:
             if not self.name or self.size_gib is None:
-                raise ValueError("name e size_gib são obrigatórios para VOLUME")
+                raise ValueError("name and size_gib are required for VOLUME")
             if self.group_name or self.members:
-                raise ValueError("group_name e members só podem ser usados em VOLUME_GROUP")
+                raise ValueError("group_name and members can only be used in VOLUME_GROUP")
         return self
 
 
@@ -151,9 +151,9 @@ class BackupOptions(BaseModel):
     @model_validator(mode="after")
     def validate_mode(self):
         if self.mode == "EXISTING_POLICY" and not self.policy_id:
-            raise ValueError("policy_id é obrigatório no modo EXISTING_POLICY")
+            raise ValueError("policy_id is required in EXISTING_POLICY mode")
         if self.mode == "CREATE_POLICY" and (not self.policy_name or not self.data_domain_id):
-            raise ValueError("policy_name e data_domain_id são obrigatórios ao criar uma política")
+            raise ValueError("policy_name and data_domain_id are required when creating a policy")
         requested = {
             "SNAPSHOT": self.snapshot_enabled,
             "REPLICATION": self.replication_enabled,
@@ -177,7 +177,7 @@ class BackupOptions(BaseModel):
             ]
             if missing:
                 raise ValueError(
-                    "objetivos avançados selecionados exigem a definição completa em "
+                    "selected advanced objectives require the complete definition in "
                     f"raw_overrides: {', '.join(missing)}"
                 )
         return self

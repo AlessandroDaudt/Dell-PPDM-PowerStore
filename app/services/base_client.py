@@ -18,7 +18,7 @@ class ExternalAPIError(RuntimeError):
         self.url = url
         self.status_code = status_code
         self.detail = detail
-        message = f"{system}: {method} {url} falhou"
+        message = f"{system}: {method} {url} failed"
         if status_code:
             message += f" (HTTP {status_code})"
         if detail:

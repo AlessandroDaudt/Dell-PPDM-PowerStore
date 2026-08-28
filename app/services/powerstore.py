@@ -113,9 +113,13 @@ class PowerStoreClient:
         return result
 
     @staticmethod
-    def _require_id(data: Any, system: str, method: str, path: str, resource: str) -> dict[str, Any]:
+    def _require_id(
+        data: Any, system: str, method: str, path: str, resource: str
+    ) -> dict[str, Any]:
         if not isinstance(data, dict) or not data.get("id"):
-            raise ExternalAPIError(system, method, path, None, f"resposta sem id de {resource}")
+            raise ExternalAPIError(
+                system, method, path, None, f"response did not include an ID for {resource}"
+            )
         return data
 
     def create_volume(self, options: dict[str, Any]) -> dict[str, Any]:
@@ -222,7 +226,7 @@ class PowerStoreClient:
         created = self.request("POST", "/api/rest/host", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PowerStore", "POST", "/api/rest/host", None, "resposta sem id do host"
+                "PowerStore", "POST", "/api/rest/host", None, "response did not include a host ID"
             )
         return created
 
