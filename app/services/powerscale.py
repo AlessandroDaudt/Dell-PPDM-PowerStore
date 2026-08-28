@@ -121,7 +121,7 @@ class PowerScaleClient:
         payload.update(options.get("raw_overrides") or {})
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not (created.get("id") or created.get("name")):
-            raise ExternalAPIError("PowerScale", "POST", endpoint, None, "resposta sem id do share")
+            raise ExternalAPIError("PowerScale", "POST", endpoint, None, "Response has no share ID")
         return {**created, "already_exists": False, "protocol": protocol}
 
     def publish_share(
@@ -131,10 +131,10 @@ class PowerScaleClient:
         options = options or share
         share_id = share.get("id") or share.get("name")
         if not share_id:
-            raise ExternalAPIError("PowerScale", "GET", "/platform/share", None, "share sem id")
+            raise ExternalAPIError("PowerScale", "GET", "/platform/share", None, "Share has no ID")
         published = self.get_share(str(share_id), options.get("nas_protocol", "NFS"))
         if not isinstance(published, dict):
             raise ExternalAPIError(
-                "PowerScale", "GET", "/platform/share", None, "share não publicado"
+                "PowerScale", "GET", "/platform/share", None, "Share was not published"
             )
         return {**published, "published": True}

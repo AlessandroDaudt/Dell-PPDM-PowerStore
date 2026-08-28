@@ -315,19 +315,21 @@ class PPDMClient:
         if additional_objectives:
             container = "objectives" if v3 else "stages"
             if not isinstance(additional_objectives, list):
-                raise ValueError("raw_overrides.additional_objectives deve ser uma lista")
+                raise ValueError("raw_overrides.additional_objectives must be a list")
             payload.setdefault(container, []).extend(additional_objectives)
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política")
+            raise ExternalAPIError(
+                "PPDM", "POST", endpoint, None, "response did not include a policy ID"
+            )
         return created
 
     def create_nas_policy(self, options: dict[str, Any]) -> dict[str, Any]:
         """Create a centralized NAS policy that uses a NAS Protection Engine."""
         if not options.get("data_domain_id"):
-            raise ValueError("data_domain_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
+            raise ValueError("data_domain_id is required for a NAS policy")
         if not options.get("nas_protection_engine_id"):
-            raise ValueError("nas_protection_engine_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
+            raise ValueError("nas_protection_engine_id is required for a NAS policy")
         version = self.get_version()
         v3 = self.uses_v3(version)
         schedule = self._schedule(options, v3)
@@ -419,7 +421,7 @@ class PPDMClient:
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PPDM", "POST", endpoint, None, "resposta sem id da política NAS"
+                "PPDM", "POST", endpoint, None, "response did not include a policy ID NAS"
             )
         return created
 
@@ -469,8 +471,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"recurso block {name} não apareceu no inventário em {timeout}s; "
-                    "execute a descoberta do storage no PPDM",
+                    f"block resource {name} did not appear in inventory within {timeout}s; "
+                    "run storage discovery in PPDM",
                 )
             time.sleep(interval)
 
@@ -502,8 +504,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"share NAS {path or name} não apareceu no inventário em {timeout}s; "
-                    "confirme a origem NAS e a implantação do NAS Protection Engine",
+                    f"NAS share {path or name} did not appear in inventory within {timeout}s; "
+                    "confirm the NAS source and NAS Protection Engine deployment",
                 )
             time.sleep(interval)
 
@@ -511,19 +513,6 @@ class PPDMClient:
         return self.request(
             "POST", f"/api/v2/protection-policies/{policy_id}/asset-assignments", json=asset_ids
         )
-
-    """
-
-                    "PPDM",
-                    "GET",
-                    "/api/v2/assets",
-                    None,
-                    f"share NAS {path or name} nÃ£o apareceu no inventÃ¡rio em {timeout}s; "
-                    "confirme a origem NAS e a implantação do NAS Protection Engine",
-                )
-            time.sleep(interval)
-
-    """
 
     def wait_for_powerstore_asset(
         self, name: str, timeout: int = 180, interval: int = 10
@@ -539,8 +528,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"volume {name} não apareceu no inventário em {timeout}s; "
-                    "execute a descoberta do PowerStore no PPDM",
+                    f"volume {name} did not appear in inventory within {timeout}s; "
+                    "trigger PowerStore discovery in PPDM",
                 )
             time.sleep(interval)
 
