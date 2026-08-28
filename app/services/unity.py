@@ -155,7 +155,7 @@ class UnityClient:
         entries = self._entries(created)
         result = entries[0] if entries else (created if isinstance(created, dict) else {})
         if not result.get("id"):
-            raise ExternalAPIError("Dell Unity", "POST", endpoint, None, "resposta sem id do share")
+            raise ExternalAPIError("Dell Unity", "POST", endpoint, None, "Response has no share ID")
         return {**result, "already_exists": False, "protocol": protocol}
 
     def publish_share(
@@ -166,7 +166,11 @@ class UnityClient:
         share_id = share.get("id")
         if not share_id:
             raise ExternalAPIError(
-                "Dell Unity", "GET", "/api/instances/{share}/", None, "share sem id para publicacao"
+                "Dell Unity",
+                "GET",
+                "/api/instances/{share}/",
+                None,
+                "Share has no ID for publication",
             )
         protocol = options.get("nas_protocol", share.get("protocol", "NFS"))
         published = self.get_share(str(share_id), protocol)
@@ -176,6 +180,6 @@ class UnityClient:
                 "GET",
                 f"/api/instances/{{share}}/{share_id}",
                 None,
-                "share nao encontrado apos a criacao",
+                "Share not found after creation",
             )
         return {**published, "published": True, "protocol": protocol.upper()}

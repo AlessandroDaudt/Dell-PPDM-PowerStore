@@ -169,7 +169,7 @@ class CiscoMDSClient:
     def _validate_token(cls, value: str, label: str) -> str:
         value = str(value).strip()
         if not value or not cls._TOKEN_PATTERN.fullmatch(value):
-            raise ValueError(f"{label} invalido para Cisco MDS")
+            raise ValueError(f"{label} is invalid for Cisco MDS")
         return value
 
     @classmethod
@@ -230,16 +230,16 @@ class CiscoMDSClient:
         peer_zoning: bool = False,
     ) -> dict[str, Any]:
         if peer_zoning:
-            raise ValueError("peer zoning ainda nao e suportado pelo adaptador Cisco MDS")
+            raise ValueError("peer zoning is not yet supported by the Cisco MDS adapter")
         zone_name = self._validate_token(zone_name, "zone_name")
         zoneset_name = self._validate_token(zoneset_name, "zoneset_name")
         if not 1 <= int(vsan_id) <= 4093:
-            raise ValueError("vsan_id deve estar entre 1 e 4093")
+            raise ValueError("vsan_id must be between 1 and 4093")
         initiators = [self._validate_token(item, "WWPN") for item in initiator_wwns]
         targets = [self._validate_token(item, "WWPN") for item in target_wwns]
         desired_members = list(dict.fromkeys([*initiators, *targets]))
         if not desired_members:
-            raise ValueError("Cisco MDS exige ao menos um initiator ou target na zone")
+            raise ValueError("Cisco MDS requires at least one initiator or target in the zone")
 
         zones = self.get_zones(vsan_id)
         existing_zone_name = next(

@@ -26,10 +26,10 @@ async function api(path, options = {}) {
   const response = await fetch(path, config);
   if (response.status === 401) {
     showLogin();
-    throw new Error("Sua sessão expirou. Entre novamente.");
+    throw new Error("Your session has expired. Please log in again.");
   }
   if (!response.ok) {
-    let detail = `Erro HTTP ${response.status}`;
+    let detail = `HTTP error ${response.status}`;
     try { const body = await response.json(); detail = body.detail || detail; } catch (_) { /* noop */ }
     throw new Error(typeof detail === "string" ? detail : JSON.stringify(detail));
   }
@@ -56,9 +56,9 @@ function showApp() {
 }
 
 const pageNames = {
-  home: ["CONTROL PLANE", "Visão geral"], inventory: ["CONFIGURAÇÃO", "Inventário"],
-  provision: ["ORQUESTRAÇÃO", "Nova LUN"], workflows: ["OBSERVABILIDADE", "Execuções"],
-  docs: ["OPERAÇÃO", "Documentação"],
+  home: ["CONTROL PLANE", "Overview"], inventory: ["CONFIGURATION", "Inventory"],
+  provision: ["ORCHESTRATION", "New LUN"], workflows: ["OBSERVABILITY", "Runs"],
+  docs: ["OPERATION", "Documentation"],
 };
 
 function navigate(route) {
@@ -72,10 +72,10 @@ function navigate(route) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-pageNames.status = ["MONITORAMENTO", "Status"];
+pageNames.status = ["MONITORING", "Status"];
 
 function statusBadge(status) {
-  const labels = { COMPLETED: "CONCLUÍDO", FAILED: "FALHOU", RUNNING: "EM EXECUÇÃO", PENDING: "PENDENTE" };
+  const labels = { COMPLETED: "COMPLETED", FAILED: "FAILED", RUNNING: "RUNNING", PENDING: "PENDING" };
   return `<span class="status-badge ${escapeHtml(status)}">${labels[status] || escapeHtml(status)}</span>`;
 }
 
@@ -100,9 +100,9 @@ function renderDashboard() {
   const counts = state.dashboard.equipment || {};
   const cards = [
     ["PowerStore", counts.POWERSTORE || 0, "Arrays cadastrados", "#365cf5"],
-    ["Hosts", counts.HOST || 0, "Servidores físicos", "#667085"],
-    ["Fibre Channel", (counts.BROCADE || 0) + (counts.CISCO_MDS || 0), "Switches de fabric", "#805ad5"],
-    ["PPDM", counts.PPDM || 0, "Gerenciadores de proteção", "#16a1ae"],
+    ["Hosts", counts.HOST || 0, "Physical servers", "#667085"],
+    ["Fibre Channel", (counts.BROCADE || 0) + (counts.CISCO_MDS || 0), "Fabric switches", "#805ad5"],
+    ["PPDM", counts.PPDM || 0, "Protection managers", "#16a1ae"],
   ];
   $("#metrics").innerHTML = cards.map(([name, count, caption, color]) =>
     `<article class="metric" style="--metric-color:${color}"><span>${name}</span><strong>${count}</strong><small>${caption}</small></article>`
@@ -110,32 +110,32 @@ function renderDashboard() {
   const readyTypes = ["POWERSTORE", "HOST", "PPDM"].filter((type) => counts[type] > 0).length + ((counts.BROCADE || 0) + (counts.CISCO_MDS || 0) > 0 ? 1 : 0);
   const percent = readyTypes * 25;
   $("#readinessBar").style.width = `${percent}%`;
-  $("#heroReadiness").textContent = percent === 100 ? "Pronto para orquestrar" : `${readyTypes} de 4 domínios prontos`;
-  $("#readinessText").textContent = percent === 100 ? "Inventário mínimo completo. Comece por um dry-run." : "Cadastre os quatro domínios para iniciar.";
+  $("#heroReadiness").textContent = percent === 100 ? "Ready to orchestrate" : `${readyTypes} of 4 domains ready`;
+  $("#readinessText").textContent = percent === 100 ? "Minimum inventory complete. Start with a dry-run." : "Register the four domains to get started.";
   const recent = state.dashboard.recent_workflows || [];
   $("#recentWorkflows").className = recent.length ? "compact-list" : "compact-list empty-state";
   $("#recentWorkflows").innerHTML = recent.length ? recent.map((workflow) => `
     <button class="compact-item text-button workflow-open" data-id="${workflow.id}">
-      ${statusBadge(workflow.status)}<span><strong>${escapeHtml(workflow.request.volume?.name || "LUN")}</strong><small>#${workflow.id} · ${workflow.dry_run ? "dry-run" : "live"}</small></span><span>Detalhes →</span>
-    </button>`).join("") : "Nenhuma execução registrada.";
+      ${statusBadge(workflow.status)}<span><strong>${escapeHtml(workflow.request.volume?.name || "LUN")}</strong><small>#${workflow.id} · ${workflow.dry_run ? "dry-run" : "live"}</small></span><span>Details →</span>
+    </button>`).join("") : "No runs recorded.";
 }
 
 function renderInventory() {
   const filtered = state.equipment.filter((item) => state.inventoryFilter === "ALL" || item.type === state.inventoryFilter);
   const root = $("#inventoryGrid");
   if (!filtered.length) {
-    root.innerHTML = `<div class="empty-state">Nenhum equipamento neste filtro.</div>`;
+    root.innerHTML = `<div class="empty-state">No equipment matches this filter.</div>`;
     return;
   }
   root.innerHTML = filtered.map((item) => `
     <article class="equipment-card">
-      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "Sem endpoint de rede")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
-      <div class="wwn-list">${item.wwns.length ? item.wwns.slice(0, 5).map((wwn) => `<div class="wwn-row"><span>${escapeHtml(wwn.value)}</span><span>${escapeHtml(wwn.fabric)} · ${escapeHtml(wwn.role)}</span></div>`).join("") : `<span class="muted">Nenhum WWN cadastrado</span>`}${item.wwns.length > 5 ? `<small>+${item.wwns.length - 5} WWNs</small>` : ""}</div>
-      <div class="card-actions"><button data-action="test" data-id="${item.id}">Testar</button><button data-action="edit" data-id="${item.id}">Editar</button><button class="danger" data-action="delete" data-id="${item.id}">Excluir</button></div>
+      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "No network endpoint")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
+      <div class="wwn-list">${item.wwns.length ? item.wwns.slice(0, 5).map((wwn) => `<div class="wwn-row"><span>${escapeHtml(wwn.value)}</span><span>${escapeHtml(wwn.fabric)} · ${escapeHtml(wwn.role)}</span></div>`).join("") : `<span class="muted">No WWNs registered</span>`}${item.wwns.length > 5 ? `<small>+${item.wwns.length - 5} WWNs</small>` : ""}</div>
+      <div class="card-actions"><button data-action="test" data-id="${item.id}">Test</button><button data-action="edit" data-id="${item.id}">Edit</button><button class="danger" data-action="delete" data-id="${item.id}">Delete</button></div>
     </article>`).join("");
 }
 
-function optionList(type, placeholder = "Selecione") {
+function optionList(type, placeholder = "Select") {
   const types = Array.isArray(type) ? type : [type];
   return `<option value="">${placeholder}</option>` + state.equipment.filter((item) => types.includes(item.type))
     .map((item) => `<option value="${item.id}" data-type="${item.type}">${escapeHtml(item.name)}${types.length > 1 ? ` · ${item.type}` : ""}</option>`).join("");
@@ -150,7 +150,7 @@ function renderProvisionChoices() {
   const choices = (type, cssName) => {
     const types = Array.isArray(type) ? type : [type];
     const items = state.equipment.filter((item) => types.includes(item.type));
-    return items.length ? items.map((item) => `<label class="choice"><input type="checkbox" name="${cssName}" value="${item.id}" /><div><strong>${escapeHtml(item.name)}</strong><small>${item.wwns.length} WWN(s) · ${escapeHtml(item.type === "CISCO_MDS" ? `${item.settings.fabric || "A"} · VSAN ${item.settings.default_vsan || 1}` : item.settings.fabric || item.settings.os_type || "")}</small></div></label>`).join("") : `<div class="empty-state">Cadastre ${type === "HOST" ? "um host" : "um switch"}.</div>`;
+    return items.length ? items.map((item) => `<label class="choice"><input type="checkbox" name="${cssName}" value="${item.id}" /><div><strong>${escapeHtml(item.name)}</strong><small>${item.wwns.length} WWN(s) · ${escapeHtml(item.type === "CISCO_MDS" ? `${item.settings.fabric || "A"} · VSAN ${item.settings.default_vsan || 1}` : item.settings.fabric || item.settings.os_type || "")}</small></div></label>`).join("") : `<div class="empty-state">Register ${type === "HOST" ? "a host" : "a switch"}.</div>`;
   };
   $("#hostChoices").innerHTML = choices("HOST", "hostChoice");
   $("#brocadeChoices").innerHTML = choices(["BROCADE", "CISCO_MDS"], "fabricChoice");
@@ -193,7 +193,7 @@ function resetEquipmentForm() {
   $("#equipmentPort").value = "443";
   $("#equipmentFid").value = "128";
   $("#equipmentActiveConfig").value = "SANFLOW_CFG";
-  $("#equipmentDialogTitle").textContent = "Novo equipamento";
+  $("#equipmentDialogTitle").textContent = "New equipment";
   $("#equipmentError").textContent = "";
   updateEquipmentFields();
 }
@@ -213,7 +213,7 @@ function updateEquipmentFields() {
 function openEquipment(item = null) {
   resetEquipmentForm();
   if (item) {
-    $("#equipmentDialogTitle").textContent = `Editar ${item.name}`;
+    $("#equipmentDialogTitle").textContent = `Edit ${item.name}`;
     $("#equipmentId").value = item.id;
     $("#equipmentType").value = item.type;
     $("#equipmentName").value = item.name;
@@ -284,7 +284,7 @@ async function saveEquipment(event) {
   const id = $("#equipmentId").value;
   try {
     await api(id ? `/api/equipment/${id}` : "/api/equipment", { method: id ? "PUT" : "POST", body });
-    $("#equipmentDialog").close(); toast("Equipamento salvo com sucesso."); await loadAll();
+    $("#equipmentDialog").close(); toast("Equipment saved successfully."); await loadAll();
   } catch (error) { $("#equipmentError").textContent = error.message; }
 }
 
@@ -293,13 +293,13 @@ async function handleInventoryAction(event) {
   const item = state.equipment.find((entry) => entry.id === Number(button.dataset.id)); if (!item) return;
   if (button.dataset.action === "edit") openEquipment(item);
   if (button.dataset.action === "test") {
-    button.disabled = true; button.textContent = "Testando…";
-    try { const result = await api(`/api/equipment/${item.id}/test`, { method: "POST" }); toast(`${item.name}: ${result.message || result.version || "conexão válida"}`); }
+    button.disabled = true; button.textContent = "Testing…";
+    try { const result = await api(`/api/equipment/${item.id}/test`, { method: "POST" }); toast(`${item.name}: ${result.message || result.version || "connection valid"}`); }
     catch (error) { toast(error.message, true); }
-    finally { button.disabled = false; button.textContent = "Testar"; }
+    finally { button.disabled = false; button.textContent = "Test"; }
   }
-  if (button.dataset.action === "delete" && confirm(`Excluir ${item.name} do inventário?`)) {
-    try { await api(`/api/equipment/${item.id}`, { method: "DELETE" }); toast("Equipamento removido."); await loadAll(); }
+  if (button.dataset.action === "delete" && confirm(`Delete ${item.name} from inventory?`)) {
+    try { await api(`/api/equipment/${item.id}`, { method: "DELETE" }); toast("Equipment removed."); await loadAll(); }
     catch (error) { toast(error.message, true); }
   }
 }
@@ -309,8 +309,8 @@ function fillSelect(id, items, label, placeholder) {
 }
 
 async function syncPowerStore() {
-  const id = $("#storageId").value; if (!id) return toast("Selecione um PowerStore.", true);
-  const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Sincronizando…";
+  const id = $("#storageId").value; if (!id) return toast("Select a PowerStore.", true);
+  const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Syncing…";
   try {
     const type = $("#storageId").selectedOptions[0]?.dataset.type;
     const endpoint = type === "POWERMAX"
@@ -321,39 +321,39 @@ async function syncPowerStore() {
           ? "unity"
           : "powerstore";
     state.powerstoreOptions = await api(`/api/integrations/${endpoint}/${id}/options`);
-    fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Seleção automática");
-    fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Padrão do array");
-    fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "Sem política local");
-    fillSelect("#nasServerId", state.powerstoreOptions.nas_servers, (item) => item.name || item.id, "Automático");
-    fillSelect("#nasFileSystemId", state.powerstoreOptions.file_systems, (item) => item.name || item.id, "Automático");
-    fillSelect("#powermaxPortGroup", state.powerstoreOptions.port_groups, (item) => item.name || item.id, "Informe no cadastro do PowerMax");
-    toast("Opções do PowerStore atualizadas em tempo real.");
+    fillSelect("#applianceId", state.powerstoreOptions.appliances, (item) => item.name || item.service_tag || item.id, "Auto-select");
+    fillSelect("#performancePolicy", state.powerstoreOptions.performance_policies, (item) => item.name || item.id, "Array default");
+    fillSelect("#localProtectionPolicy", state.powerstoreOptions.protection_policies, (item) => item.name || item.id, "No local policy");
+    fillSelect("#nasServerId", state.powerstoreOptions.nas_servers, (item) => item.name || item.id, "Automatic");
+    fillSelect("#nasFileSystemId", state.powerstoreOptions.file_systems, (item) => item.name || item.id, "Automatic");
+    fillSelect("#powermaxPortGroup", state.powerstoreOptions.port_groups, (item) => item.name || item.id, "Register it in PowerMax first");
+    toast("PowerStore options updated in real time.");
   } catch (error) { toast(error.message, true); }
-  finally { button.disabled = false; button.textContent = "↻ Sincronizar opções"; }
+  finally { button.disabled = false; button.textContent = "↻ Sync options"; }
 }
 
 function updateDdDependentOptions() {
   const selected = (state.ppdmOptions.data_domains || []).find((item) => item.id === $("#dataDomain").value);
   const interfaces = selected?.details?.dataDomain?.preferredInterfaces || [];
-  fillSelect("#ddInterface", interfaces.map((item) => ({ id: item.networkName, ...item })), (item) => `${item.networkName}${item.purposes ? ` · ${item.purposes.join(", ")}` : ""}`, "Automática");
+  fillSelect("#ddInterface", interfaces.map((item) => ({ id: item.networkName, ...item })), (item) => `${item.networkName}${item.purposes ? ` · ${item.purposes.join(", ")}` : ""}`, "Automatic");
   const units = (state.ppdmOptions.storage_units || []).filter((unit) => !selected || unit.storageSystem?.id === selected.id || unit.storageSystemId === selected.id);
-  fillSelect("#storageUnit", units, (item) => item.name || item.id, "Auto provisionar");
+  fillSelect("#storageUnit", units, (item) => item.name || item.id, "Auto-provision");
 }
 
 async function syncPpdm() {
-  const id = $("#ppdmId").value; if (!id) return toast("Selecione um PPDM.", true);
-  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Consultando…";
+  const id = $("#ppdmId").value; if (!id) return toast("Select a PPDM.", true);
+  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     const nas = ["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value);
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/${nas ? "nas-options" : "options"}`);
-    fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Selecione uma política");
-    fillSelect("#dataDomain", state.ppdmOptions.data_domains, (item) => item.name || item.id, "Selecione um Data Domain");
+    fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Select a policy");
+    fillSelect("#dataDomain", state.ppdmOptions.data_domains, (item) => item.name || item.id, "Select a Data Domain");
     updateDdDependentOptions();
-    fillSelect("#nasProtectionEngine", state.ppdmOptions.protection_engines, (item) => item.name || item.id, "Automático");
+    fillSelect("#nasProtectionEngine", state.ppdmOptions.protection_engines, (item) => item.name || item.id, "Automatic");
     updateBackupMode();
-    toast(`PPDM ${state.ppdmOptions.version}: Data Domains, storage units e políticas atualizados.`);
+    toast(`PPDM ${state.ppdmOptions.version}: Data Domains, storage units, and policies updated.`);
   } catch (error) { toast(error.message, true); }
-  finally { button.disabled = false; button.textContent = "↻ Buscar Data Domains e rotinas"; }
+  finally { button.disabled = false; button.textContent = "↻ Fetch Data Domains and policies"; }
 }
 
 function updatePolicySummary() {
@@ -388,7 +388,7 @@ function updatePolicySummary() {
       (time) => `${time.unitValue} ${time.unitType} (${time.type})`,
     ));
   });
-  root.innerHTML = `<strong>Política lida em tempo real</strong><span>Objetivos: ${escapeHtml(types.join(", ") || "não informados")}</span><span>Rotinas: ${escapeHtml([...new Set(schedules)].join(", ") || "não informadas")}</span><span>Retenções: ${escapeHtml(retentions.join(", ") || "não informadas")}</span><span>Destinos DD: ${escapeHtml([...new Set(targets)].join(", ") || "automático")}</span>`;
+  root.innerHTML = `<strong>Policy read in real time</strong><span>Objectives: ${escapeHtml(types.join(", ") || "not provided")}</span><span>Schedules: ${escapeHtml([...new Set(schedules)].join(", ") || "not provided")}</span><span>Retentions: ${escapeHtml(retentions.join(", ") || "not provided")}</span><span>DD targets: ${escapeHtml([...new Set(targets)].join(", ") || "automatic")}</span>`;
   root.classList.remove("hidden");
 }
 
@@ -414,7 +414,7 @@ function updateBackupMode() {
   if (create && state.ppdmOptions.policy_api === "v3") {
     $("#encryptedBackup").checked = true;
     $("#encryptedBackup").disabled = true;
-    $("#encryptedBackup").title = "O contrato v3 não expõe encrypted no objeto de política.";
+    $("#encryptedBackup").title = "The v3 contract does not expose encrypted in the policy object.";
   } else {
     $("#encryptedBackup").title = "";
   }
@@ -428,12 +428,12 @@ async function submitProvision(event) {
   const mode = $("#backupMode").value;
   let rawOverrides = {};
   try { rawOverrides = $("#rawOverrides").value.trim() ? JSON.parse($("#rawOverrides").value) : {}; }
-  catch (_) { return toast("O payload avançado não é um JSON válido.", true); }
+  catch (_) { return toast("The advanced payload is not valid JSON.", true); }
   const resourceType = $("#resourceType").value;
   let members = [];
   if (resourceType === "VOLUME_GROUP") {
     try { members = JSON.parse($("#groupMembers").value || "[]"); }
-    catch (_) { return toast("A lista de volumes membros não é um JSON válido.", true); }
+    catch (_) { return toast("The member volume list is not valid JSON.", true); }
   }
   const body = {
     storage_id: Number($("#storageId").value), ppdm_id: $("#ppdmId").value ? Number($("#ppdmId").value) : null,
@@ -473,13 +473,13 @@ async function submitProvision(event) {
       nas_protection_engine_id: resourceType.startsWith("NAS_") ? $("#nasProtectionEngine").value || null : null,
     },
   };
-  if (!body.dry_run && !confirm("Modo LIVE: este fluxo criará volume, mappings, zones, zoning Fibre Channel e proteção. Continuar?")) return;
-  const submit = $("#provisionForm button[type=submit]"); submit.disabled = true; submit.textContent = "Iniciando…";
+  if (!body.dry_run && !confirm("LIVE mode: this flow will create a volume, mappings, zones, Fibre Channel zoning, and protection. Continue?")) return;
+  const submit = $("#provisionForm button[type=submit]"); submit.disabled = true; submit.textContent = "Starting…";
   try {
     const workflow = await api("/api/workflows", { method: "POST", body });
-    toast(`Workflow #${workflow.id} iniciado.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
+    toast(`Workflow #${workflow.id} started.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
   } catch (error) { toast(error.message, true); }
-  finally { submit.disabled = false; submit.textContent = "Executar fluxo completo →"; }
+  finally { submit.disabled = false; submit.textContent = "Run complete flow →"; }
 }
 
 function scalarMetric(value) {
@@ -524,13 +524,13 @@ function formatBytes(value) {
   const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
   let size = number; let unit = 0;
   while (Math.abs(size) >= 1024 && unit < units.length - 1) { size /= 1024; unit += 1; }
-  return `${size.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} ${units[unit]}`;
+  return `${size.toLocaleString("en-US", { maximumFractionDigits: 2 })} ${units[unit]}`;
 }
 
 function formatPercent(value) {
   const number = scalarMetric(value);
   if (number === null || typeof number !== "number") return "N/A";
-  return `${number.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+  return `${number.toLocaleString("en-US", { maximumFractionDigits: 2 })}%`;
 }
 
 function metricText(metrics, byteNames, percentNames, suffix = "") {
@@ -544,11 +544,11 @@ function metricText(metrics, byteNames, percentNames, suffix = "") {
 
 function networkText(metrics) {
   const bits = scalarMetric(findMetric(metrics, ["rx_rate_bits_ps", "tx_rate_bits_ps", "network_rate_bits_ps"]));
-  if (typeof bits === "number") return `${(bits / 1000000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  if (typeof bits === "number") return `${(bits / 1000000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Mbps`;
   const bytes = scalarMetric(findMetric(metrics, ["throughput_bytes_per_second", "network_bytes_per_second"]));
-  if (typeof bytes === "number") return `${((bytes * 8) / 1000000).toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  if (typeof bytes === "number") return `${((bytes * 8) / 1000000).toLocaleString("en-US", { maximumFractionDigits: 2 })} Mbps`;
   const mbps = scalarMetric(findMetric(metrics, ["throughput_mbps", "network_mbps"]));
-  if (typeof mbps === "number") return `${mbps.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} Mbps`;
+  if (typeof mbps === "number") return `${mbps.toLocaleString("en-US", { maximumFractionDigits: 2 })} Mbps`;
   return metricText(metrics, [], ["network_utilization", "network_utilization_percent"]);
 }
 
@@ -567,7 +567,7 @@ function portValue(port, keys) {
 
 function renderStatusPortTable(metrics) {
   const ports = statusPorts(metrics);
-  if (!ports.length) return `<p class="muted">Portas sem dados estruturados nesta coleta. Consulte os detalhes brutos.</p>`;
+  if (!ports.length) return `<p class="muted">No structured port data in this collection. See the raw details.</p>`;
   const rows = ports.slice(0, 200).map((port) => {
     const name = portValue(port, ["name", "interface", "port", "port_name", "portName"]);
     const status = portValue(port, ["status", "operational-status", "operational_status", "link_state", "linkState"]);
@@ -578,12 +578,12 @@ function renderStatusPortTable(metrics) {
     const credits = portValue(port, ["buffer_credits", "tx_b2b_credit_remain", "rx_b2b_credit_remain", "tx_b2b_credits", "rx_b2b_credits"]);
     return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(status)}</td><td>${escapeHtml(speed)}</td><td>${escapeHtml(utilization)}</td><td>${escapeHtml(attenuation)}</td><td>${escapeHtml(errors)}</td><td>${escapeHtml(credits)}</td></tr>`;
   }).join("");
-  return `<div class="table-scroll"><table class="status-table"><thead><tr><th>Porta</th><th>Status</th><th>Velocidade</th><th>Uso / txwait</th><th>Atenuação / potência</th><th>Erros</th><th>Buffer credits</th></tr></thead><tbody>${rows}</tbody></table></div>${ports.length > 200 ? `<small class="muted">Exibindo 200 de ${ports.length} portas; o payload completo está nos detalhes.</small>` : ""}`;
+  return `<div class="table-scroll"><table class="status-table"><thead><tr><th>Port</th><th>Status</th><th>Speed</th><th>Usage / txwait</th><th>Attenuation / power</th><th>Errors</th><th>Buffer credits</th></tr></thead><tbody>${rows}</tbody></table></div>${ports.length > 200 ? `<small class="muted">Showing 200 of ${ports.length} ports; the complete payload is in the details.</small>` : ""}`;
 }
 
 function statusStateBadge(value) {
   const stateValue = String(value || "UNKNOWN").toUpperCase();
-  const label = { OK: "OK", DEGRADED: "DEGRADADO", ERROR: "ERRO", UNKNOWN: "SEM DADOS" }[stateValue] || stateValue;
+  const label = { OK: "OK", DEGRADED: "DEGRADED", ERROR: "ERROR", UNKNOWN: "NO DATA" }[stateValue] || stateValue;
   return `<span class="status-state ${escapeHtml(stateValue)}">${label}</span>`;
 }
 
@@ -591,20 +591,20 @@ function renderStatusSystem(system) {
   const metrics = system.metrics || {};
   const ports = statusPorts(metrics);
   const network = networkText(metrics);
-  return `<article class="status-system"><div class="status-system-head"><div><span class="type-badge ${escapeHtml(system.component_type)}">${escapeHtml(system.component_type)}</span><h4>${escapeHtml(system.component_name)}</h4><small>${escapeHtml(new Date(system.sampled_at).toLocaleString("pt-BR"))}</small></div>${statusStateBadge(system.state)}</div><div class="status-facts"><span><b>Capacidade</b>${metricText(metrics, ["usable_capacity_bytes", "total_capacity_bytes", "capacity_bytes", "logical_capacity_bytes", "total_bytes"], ["capacity_utilization", "capacity_utilization_percent", "used_percent", "utilization_percent"])}</span><span><b>Uso</b>${metricText(metrics, ["used_bytes", "used_capacity_bytes", "physical_used_bytes"], ["used_percent", "capacity_utilization_percent", "licensed_utilization"])}</span><span><b>Rede</b>${network}</span><span><b>Portas</b>${ports.length || "N/A"}</span></div>${ports.length ? `<div class="status-ports"><h5>Portas e contadores</h5>${renderStatusPortTable(metrics)}</div>` : ""}<details class="status-details"><summary>Todos os dados coletados</summary><pre>${escapeHtml(JSON.stringify(metrics, null, 2))}</pre></details>${system.error ? `<p class="form-error">${escapeHtml(system.error)}</p>` : ""}</article>`;
+  return `<article class="status-system"><div class="status-system-head"><div><span class="type-badge ${escapeHtml(system.component_type)}">${escapeHtml(system.component_type)}</span><h4>${escapeHtml(system.component_name)}</h4><small>${escapeHtml(new Date(system.sampled_at).toLocaleString("en-US"))}</small></div>${statusStateBadge(system.state)}</div><div class="status-facts"><span><b>Capacity</b>${metricText(metrics, ["usable_capacity_bytes", "total_capacity_bytes", "capacity_bytes", "logical_capacity_bytes", "total_bytes"], ["capacity_utilization", "capacity_utilization_percent", "used_percent", "utilization_percent"])}</span><span><b>Usage</b>${metricText(metrics, ["used_bytes", "used_capacity_bytes", "physical_used_bytes"], ["used_percent", "capacity_utilization_percent", "licensed_utilization"])}</span><span><b>Network</b>${network}</span><span><b>Ports</b>${ports.length || "N/A"}</span></div>${ports.length ? `<div class="status-ports"><h5>Ports and counters</h5>${renderStatusPortTable(metrics)}</div>` : ""}<details class="status-details"><summary>All collected data</summary><pre>${escapeHtml(JSON.stringify(metrics, null, 2))}</pre></details>${system.error ? `<p class="form-error">${escapeHtml(system.error)}</p>` : ""}</article>`;
 }
 
 function renderStatus() {
   const systems = state.status.systems || [];
   const healthy = systems.filter((item) => item.state === "OK").length;
   const errors = systems.filter((item) => ["ERROR", "DEGRADED"].includes(item.state)).length;
-  const cards = [["Componentes", systems.length, "Último estado persistido", "#365cf5"], ["Saudáveis", healthy, "Amostras OK", "#16a1ae"], ["Atenção", errors, "Erro ou métrica parcial", "#e07a25"], ["Retenção", `${state.status.retention_days || 30}d`, `A cada ${state.status.sample_interval_seconds || 60}s`, "#805ad5"]];
+  const cards = [["Components", systems.length, "Latest persisted state", "#365cf5"], ["Healthy", healthy, "OK samples", "#16a1ae"], ["Attention", errors, "Error or partial metric", "#e07a25"], ["Retention", `${state.status.retention_days || 30}d`, `Every ${state.status.sample_interval_seconds || 60}s`, "#805ad5"]];
   $("#statusSummary").innerHTML = cards.map(([name, count, caption, color]) => `<article class="metric" style="--metric-color:${color}"><span>${name}</span><strong>${count}</strong><small>${caption}</small></article>`).join("");
-  $("#statusSystems").innerHTML = systems.length ? systems.map(renderStatusSystem).join("") : `<div class="empty-state">Nenhuma amostra disponível. Cadastre um equipamento monitorável ou clique em Coletar agora.</div>`;
-  $("#statusLastUpdate").textContent = systems.length ? `Atualização visual a cada 15s · coleta configurada a cada ${state.status.sample_interval_seconds || 60}s · retenção ${state.status.retention_days || 30} dias` : "Aguardando a primeira coleta.";
+  $("#statusSystems").innerHTML = systems.length ? systems.map(renderStatusSystem).join("") : `<div class="empty-state">No samples available. Register monitorable equipment or click Collect now.</div>`;
+  $("#statusLastUpdate").textContent = systems.length ? `Visual refresh every 15s · collection configured every ${state.status.sample_interval_seconds || 60}s · retention ${state.status.retention_days || 30} days` : "Waiting for the first collection.";
   const target = $("#statusHistoryTarget");
   const previous = target.value;
-  target.innerHTML = `<option value="">Selecione um componente</option>` + systems.map((item) => `<option value="${item.equipment_id}::${escapeHtml(item.component_key)}">${escapeHtml(item.component_name)} · ${escapeHtml(item.component_type)}</option>`).join("");
+  target.innerHTML = `<option value="">Select a component</option>` + systems.map((item) => `<option value="${item.equipment_id}::${escapeHtml(item.component_key)}">${escapeHtml(item.component_name)} · ${escapeHtml(item.component_type)}</option>`).join("");
   if ([...target.options].some((option) => option.value === previous)) target.value = previous;
   if (target.value) loadStatusHistory();
 }
@@ -619,7 +619,7 @@ async function loadStatus(options = {}) {
 
 async function loadStatusHistory() {
   const target = $("#statusHistoryTarget").value;
-  if (!target) { $("#statusHistory").innerHTML = `<p class="muted">Selecione um componente para consultar as amostras.</p>`; return; }
+  if (!target) { $("#statusHistory").innerHTML = `<p class="muted">Select a component to view samples.</p>`; return; }
   const separator = target.indexOf("::");
   const equipmentId = target.slice(0, separator);
   const componentKey = target.slice(separator + 2);
@@ -627,7 +627,7 @@ async function loadStatusHistory() {
   try {
     const result = await api(`/api/status/history?equipment_id=${encodeURIComponent(equipmentId)}&component_key=${encodeURIComponent(componentKey)}&hours=${hours}`);
     const samples = result.samples || [];
-    $("#statusHistory").innerHTML = samples.length ? `<div class="table-scroll"><table class="status-table history-table"><thead><tr><th>Amostra</th><th>Estado</th><th>Capacidade / uso</th><th>Portas</th><th>Erro</th></tr></thead><tbody>${samples.map((sample) => `<tr><td>${escapeHtml(new Date(sample.sampled_at).toLocaleString("pt-BR"))}</td><td>${statusStateBadge(sample.state)}</td><td>${escapeHtml(metricText(sample.metrics || {}, ["used_bytes", "used_capacity_bytes", "capacity_bytes"], ["used_percent", "capacity_utilization_percent"]))}</td><td>${statusPorts(sample.metrics || {}).length || "—"}</td><td>${escapeHtml(sample.error || "—")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">Nenhuma amostra no período selecionado.</p>`;
+    $("#statusHistory").innerHTML = samples.length ? `<div class="table-scroll"><table class="status-table history-table"><thead><tr><th>Sample</th><th>State</th><th>Capacity / usage</th><th>Ports</th><th>Error</th></tr></thead><tbody>${samples.map((sample) => `<tr><td>${escapeHtml(new Date(sample.sampled_at).toLocaleString("en-US"))}</td><td>${statusStateBadge(sample.state)}</td><td>${escapeHtml(metricText(sample.metrics || {}, ["used_bytes", "used_capacity_bytes", "capacity_bytes"], ["used_percent", "capacity_utilization_percent"]))}</td><td>${statusPorts(sample.metrics || {}).length || "—"}</td><td>${escapeHtml(sample.error || "—")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="muted">No samples in the selected period.</p>`;
   } catch (error) { toast(error.message, true); }
 }
 
@@ -643,16 +643,16 @@ async function loadWorkflows() {
 
 function renderWorkflows() {
   const root = $("#workflowList");
-  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">Nenhum workflow executado.</div>`;
+  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">No workflows executed.</div>`;
   root.innerHTML = state.workflows.map((workflow) => `
-    <article class="workflow-card"><strong>#${workflow.id}</strong><div><h4>${escapeHtml(workflow.request.volume?.name || "LUN")}</h4><p>${workflow.dry_run ? "DRY-RUN" : "LIVE"} · ${escapeHtml(workflow.current_step || "Finalizado")}</p></div><div class="step-mini">${workflow.steps.map((step) => `<i class="${step.status}" title="${escapeHtml(step.name)}"></i>`).join("")}</div><div>${statusBadge(workflow.status)} <button class="button compact ghost workflow-open" data-id="${workflow.id}">Detalhes</button></div></article>`).join("");
+    <article class="workflow-card"><strong>#${workflow.id}</strong><div><h4>${escapeHtml(workflow.request.volume?.name || "LUN")}</h4><p>${workflow.dry_run ? "DRY-RUN" : "LIVE"} · ${escapeHtml(workflow.current_step || "Completed")}</p></div><div class="step-mini">${workflow.steps.map((step) => `<i class="${step.status}" title="${escapeHtml(step.name)}"></i>`).join("")}</div><div>${statusBadge(workflow.status)} <button class="button compact ghost workflow-open" data-id="${workflow.id}">Details</button></div></article>`).join("");
 }
 
 async function openWorkflow(id) {
   try {
     const workflow = await api(`/api/workflows/${id}`);
     $("#workflowDialogTitle").textContent = `Workflow #${workflow.id} · ${workflow.request.volume?.name || "LUN"}`;
-    $("#workflowDetail").innerHTML = `${workflow.error ? `<div class="error-box">${escapeHtml(workflow.error)}</div>` : ""}<div class="timeline">${workflow.steps.map((step) => `<article class="timeline-step"><i class="timeline-dot ${step.status}"></i><div><h4>${escapeHtml(step.name)} · ${escapeHtml(step.status)}</h4><p>${escapeHtml(step.message || "Aguardando execução")}</p></div></article>`).join("")}</div>`;
+    $("#workflowDetail").innerHTML = `${workflow.error ? `<div class="error-box">${escapeHtml(workflow.error)}</div>` : ""}<div class="timeline">${workflow.steps.map((step) => `<article class="timeline-step"><i class="timeline-dot ${step.status}"></i><div><h4>${escapeHtml(step.name)} · ${escapeHtml(step.status)}</h4><p>${escapeHtml(step.message || "Waiting for execution")}</p></div></article>`).join("")}</div>`;
     $$(".timeline-step").forEach((element, index) => {
       const details = document.createElement("details");
       const summary = document.createElement("summary");
@@ -698,12 +698,12 @@ function bindEvents() {
   $("#dataDomain").addEventListener("change", updateDdDependentOptions);
   $("#backupMode").addEventListener("change", updateBackupMode);
   $("#existingPolicy").addEventListener("change", updatePolicySummary);
-  $("#dryRun").addEventListener("change", () => { $("#submitHint").textContent = $("#dryRun").checked ? "O dry-run gera o plano sem modificar a infraestrutura." : "Modo LIVE: mudanças reais serão executadas."; });
+  $("#dryRun").addEventListener("change", () => { $("#submitHint").textContent = $("#dryRun").checked ? "The dry-run generates the plan without modifying infrastructure." : "LIVE mode: real changes will be executed."; });
   $("#provisionForm").addEventListener("submit", submitProvision);
   $("#refreshWorkflows").addEventListener("click", loadWorkflows);
   $("#collectStatus").addEventListener("click", async () => {
-    const button = $("#collectStatus"); button.disabled = true; button.textContent = "Coletando...";
-    await loadStatus({ collect: true }); button.disabled = false; button.textContent = "Coletar agora";
+    const button = $("#collectStatus"); button.disabled = true; button.textContent = "Collecting...";
+    await loadStatus({ collect: true }); button.disabled = false; button.textContent = "Collect now";
   });
   $("#refreshStatus").addEventListener("click", () => loadStatus());
   $("#statusHistoryTarget").addEventListener("change", loadStatusHistory);

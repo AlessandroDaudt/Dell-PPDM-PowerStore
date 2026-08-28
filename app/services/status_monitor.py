@@ -88,7 +88,7 @@ class StatusCollector:
             return PPDMClient(**common)
         if equipment.type == EquipmentType.BROCADE.value:
             return BrocadeClient(**common)
-        raise ValueError(f"tipo de equipamento não coletável: {equipment.type}")
+        raise ValueError(f"Equipment type cannot be collected: {equipment.type}")
 
     def _collect_one(self, equipment: Equipment) -> list[CollectedStatus]:
         try:

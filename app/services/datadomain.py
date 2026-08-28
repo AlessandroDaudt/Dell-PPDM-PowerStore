@@ -101,7 +101,7 @@ class DataDomainClient:
         system = self.request("GET", "/system")
         network = {
             "available": False,
-            "reason": "métrica de rede não exposta pela API REST do equipamento",
+            "reason": "Network metric is not exposed by the equipment REST API",
         }
         for path in (
             "/dd-systems/0/stats/network",

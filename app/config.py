@@ -10,7 +10,7 @@ class Settings(BaseSettings):
         env_file=".env", env_prefix="APP_", case_sensitive=False, extra="ignore"
     )
 
-    app_name: str = "SANFlow Dell"
+    app_name: str = "San Flow"
     secret_key: str = Field(default="development-only-change-me", min_length=16)
     admin_username: str = "admin"
     admin_password: str = "admin"

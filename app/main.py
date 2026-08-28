@@ -32,9 +32,9 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="SANFlow Dell API",
+    title="San Flow API",
     description=(
-        "Dell storage provisioning, Brocade or Cisco MDS Fibre Channel zoning and PPDM protection."
+        "Storage provisioning, Brocade or Cisco MDS Fibre Channel zoning, and PPDM protection."
     ),
     version=__version__,
     lifespan=lifespan,

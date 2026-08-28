@@ -140,7 +140,7 @@ class PowerStoreClient:
         data: Any, system: str, method: str, path: str, resource: str
     ) -> dict[str, Any]:
         if not isinstance(data, dict) or not data.get("id"):
-            raise ExternalAPIError(system, method, path, None, f"resposta sem id de {resource}")
+            raise ExternalAPIError(system, method, path, None, f"Response has no {resource} ID")
         return data
 
     def create_volume(self, options: dict[str, Any]) -> dict[str, Any]:
@@ -185,7 +185,7 @@ class PowerStoreClient:
             "PowerStore",
             "POST",
             "/api/rest/volume_group",
-            "grupo de volumes",
+            "volume group",
         )
         members: list[dict[str, Any]] = []
         for member in options.get("members", []):
@@ -249,7 +249,7 @@ class PowerStoreClient:
         created = self.request("POST", "/api/rest/host", json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PowerStore", "POST", "/api/rest/host", None, "resposta sem id do host"
+                "PowerStore", "POST", "/api/rest/host", None, "Response has no host ID"
             )
         return created
 

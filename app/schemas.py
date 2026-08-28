@@ -10,7 +10,7 @@ WWN_HEX = re.compile(r"^[0-9a-fA-F]{16}$")
 def normalize_wwn(value: str) -> str:
     compact = re.sub(r"[^0-9a-fA-F]", "", value or "")
     if not WWN_HEX.fullmatch(compact):
-        raise ValueError("WWN deve conter exatamente 16 dígitos hexadecimais")
+        raise ValueError("WWN must contain exactly 16 hexadecimal digits")
     compact = compact.lower()
     return ":".join(compact[index : index + 2] for index in range(0, 16, 2))
 
@@ -62,7 +62,7 @@ class EquipmentCreate(BaseModel):
     @model_validator(mode="after")
     def validate_address(self):
         if self.type != "HOST" and not self.management_address:
-            raise ValueError("endereço de gerenciamento é obrigatório para este tipo")
+            raise ValueError("Management address is required for this type")
         if (
             self.type
             in {
@@ -78,7 +78,7 @@ class EquipmentCreate(BaseModel):
             }
             and not self.username
         ):
-            raise ValueError("usuário de API é obrigatório para este tipo")
+            raise ValueError("API username is required for this type")
         return self
 
 
@@ -103,14 +103,14 @@ class EquipmentRead(BaseModel):
 class VolumeMemberOptions(BaseModel):
     name: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int = Field(ge=1, le=65536)
-    description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    description: str = Field(default="Created by San Flow", max_length=256)
     logical_unit_number: int | None = Field(default=None, ge=0, le=16383)
 
 
 class VolumeOptions(BaseModel):
     name: str | None = Field(default=None, max_length=128, pattern=r"^[A-Za-z0-9_.-]+$")
     size_gib: int | None = Field(default=None, ge=1, le=65536)
-    description: str = Field(default="Criado pelo SANFlow Dell", max_length=256)
+    description: str = Field(default="Created by San Flow", max_length=256)
     resource_type: Literal[
         "VOLUME", "VOLUME_GROUP", "POWERMAX_STORAGE_GROUP", "NAS_SHARE", "NAS_DATA"
     ] = "VOLUME"
@@ -141,31 +141,31 @@ class VolumeOptions(BaseModel):
     def validate_resource(self):
         if self.resource_type == "VOLUME_GROUP":
             if not self.group_name:
-                raise ValueError("group_name é obrigatório para VOLUME_GROUP")
+                raise ValueError("group_name is required for VOLUME_GROUP")
             if not self.members:
-                raise ValueError("members é obrigatório para VOLUME_GROUP")
+                raise ValueError("members is required for VOLUME_GROUP")
             names = [member.name.casefold() for member in self.members]
             if len(names) != len(set(names)):
-                raise ValueError("members não pode conter nomes repetidos")
+                raise ValueError("members cannot contain duplicate names")
         elif self.resource_type == "POWERMAX_STORAGE_GROUP":
             if not self.name or self.size_gib is None:
-                raise ValueError("name e size_gib são obrigatórios para POWERMAX_STORAGE_GROUP")
+                raise ValueError("name and size_gib are required for POWERMAX_STORAGE_GROUP")
             if self.members or self.group_name:
-                raise ValueError("members e group_name não são usados em POWERMAX_STORAGE_GROUP")
+                raise ValueError("members and group_name are not used in POWERMAX_STORAGE_GROUP")
         elif self.resource_type in {"NAS_SHARE", "NAS_DATA"}:
             if not self.name:
-                raise ValueError("name é obrigatório para um recurso NAS")
+                raise ValueError("name is required for a NAS resource")
             if not self.nas_path:
-                raise ValueError("nas_path é obrigatório para um recurso NAS")
+                raise ValueError("nas_path is required for a NAS resource")
             if self.resource_type == "NAS_DATA" and self.size_gib is None:
-                raise ValueError("size_gib é obrigatório para NAS_DATA")
+                raise ValueError("size_gib is required for NAS_DATA")
             if self.members or self.group_name:
-                raise ValueError("members e group_name não são usados para um recurso NAS")
+                raise ValueError("members and group_name are not used for a NAS resource")
         else:
             if not self.name or self.size_gib is None:
-                raise ValueError("name e size_gib são obrigatórios para VOLUME")
+                raise ValueError("name and size_gib are required for VOLUME")
             if self.group_name or self.members:
-                raise ValueError("group_name e members só podem ser usados em VOLUME_GROUP")
+                raise ValueError("group_name and members can only be used in VOLUME_GROUP")
         return self
 
 
@@ -207,9 +207,9 @@ class BackupOptions(BaseModel):
     @model_validator(mode="after")
     def validate_mode(self):
         if self.mode == "EXISTING_POLICY" and not self.policy_id:
-            raise ValueError("policy_id é obrigatório no modo EXISTING_POLICY")
+            raise ValueError("policy_id is required in EXISTING_POLICY mode")
         if self.mode == "CREATE_POLICY" and (not self.policy_name or not self.data_domain_id):
-            raise ValueError("policy_name e data_domain_id são obrigatórios ao criar uma política")
+            raise ValueError("policy_name and data_domain_id are required when creating a policy")
         requested = {
             "SNAPSHOT": self.snapshot_enabled,
             "REPLICATION": self.replication_enabled,
@@ -231,7 +231,7 @@ class BackupOptions(BaseModel):
             ]
             if missing:
                 raise ValueError(
-                    "objetivos avançados selecionados exigem a definição completa em "
+                    "selected advanced objectives require the complete definition in "
                     f"raw_overrides: {', '.join(missing)}"
                 )
         return self
@@ -253,24 +253,24 @@ class ProvisionRequest(BaseModel):
         storage_resource = self.volume.resource_type
         hostless = storage_resource in {"NAS_SHARE", "NAS_DATA"}
         if not hostless and not self.host_ids:
-            raise ValueError("selecione ao menos um host para este recurso block")
+            raise ValueError("select at least one host for this block resource")
         fabric_ids = self.fabric_ids or self.brocade_ids
         if self.zoning.enabled and not fabric_ids and not hostless:
             raise ValueError(
-                "selecione ao menos um switch Fibre Channel quando o zoning estiver habilitado"
+                "select at least one Fibre Channel switch when zoning is enabled"
             )
         if hostless and self.zoning.enabled:
-            raise ValueError("zoning deve ser desabilitado para recursos sem apresentação FC")
+            raise ValueError("zoning must be disabled for resources without FC presentation")
         if storage_resource in {"NAS_SHARE", "NAS_DATA"} and self.backup.mode == "NONE":
-            raise ValueError("proteção PPDM é obrigatória para um recurso NAS")
+            raise ValueError("PPDM protection is required for a NAS resource")
         if (
             storage_resource in {"NAS_SHARE", "NAS_DATA"}
             and self.backup.mode == "CREATE_POLICY"
             and not self.backup.nas_protection_engine_id
         ):
-            raise ValueError("NAS Protection Engine Ã© obrigatÃ³rio ao criar uma polÃ­tica NAS")
+            raise ValueError("NAS Protection Engine is required when creating a NAS policy")
         if self.backup.mode != "NONE" and self.ppdm_id is None:
-            raise ValueError("selecione um PPDM quando o backup estiver habilitado")
+            raise ValueError("select a PPDM when backup is enabled")
         return self
 
 

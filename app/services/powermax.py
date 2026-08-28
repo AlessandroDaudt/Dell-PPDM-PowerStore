@@ -81,7 +81,7 @@ class PowerMaxClient:
     def get_status(self, symmetrix_id: str | None = None) -> dict[str, Any]:
         self.symmetrix_id = symmetrix_id or self.symmetrix_id
         if not self.symmetrix_id:
-            raise ValueError("symmetrix_id é obrigatório para status do PowerMax")
+            raise ValueError("symmetrix_id is required for PowerMax status")
         system = self.request("GET", f"/system/symmetrix/{self.symmetrix_id}")
         metrics = {
             "symmetrix_id": self.symmetrix_id,
@@ -95,7 +95,7 @@ class PowerMaxClient:
 
     def _array_path(self, suffix: str) -> str:
         if not self.symmetrix_id:
-            raise ValueError("symmetrix_id é obrigatório para operações PowerMax")
+            raise ValueError("symmetrix_id is required for PowerMax operations")
         return f"/sloprovisioning/symmetrix/{self.symmetrix_id}/{suffix.lstrip('/')}"
 
     def get_options(self, symmetrix_id: str) -> dict[str, Any]:
@@ -159,7 +159,7 @@ class PowerMaxClient:
         group_id = data.get("id") or data.get("storageGroupId") or data.get("storageGroupName")
         if group_id:
             return {**data, "id": str(group_id)}
-        raise ExternalAPIError("PowerMax", "POST", path, None, "resposta sem id do storage group")
+        raise ExternalAPIError("PowerMax", "POST", path, None, "Response has no storage group ID")
 
     def build_storage_group_payload(self, options: dict[str, Any]) -> dict[str, Any]:
         name = options["name"]
@@ -195,7 +195,7 @@ class PowerMaxClient:
 
     def ensure_storage_group(self, options: dict[str, Any]) -> dict[str, Any]:
         if not self.symmetrix_id:
-            raise ValueError("symmetrix_id é obrigatório para operações PowerMax")
+            raise ValueError("symmetrix_id is required for PowerMax operations")
         existing = next(
             (item for item in self.get_storage_groups() if item.get("name") == options["name"]),
             None,
@@ -247,7 +247,9 @@ class PowerMaxClient:
         options: dict[str, Any],
     ) -> dict[str, Any]:
         if not port_group_id:
-            raise ValueError("PowerMax exige um Port Group para apresentar o Storage Group ao host")
+            raise ValueError(
+                "PowerMax requires a Port Group to present the Storage Group to the host"
+            )
         prefix = options.get("masking_view_prefix") or storage_group_id
         masking_view_id = f"{prefix}_{host_name}"[:64]
         for item in self.get_masking_views():

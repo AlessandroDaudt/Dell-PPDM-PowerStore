@@ -1,6 +1,6 @@
 # Status monitoring
 
-The **Status** menu is an observational dashboard for the infrastructure registered in SANFlow. It shows the newest persisted sample for each appliance, Data Domain and Fibre Channel switch, plus a history window of up to 30 days.
+The **Status** menu is an observational dashboard for the infrastructure registered in San Flow. It shows the newest persisted sample for each appliance, Data Domain and Fibre Channel switch, plus a history window of up to 30 days.
 
 ## Collection and retention
 
@@ -30,9 +30,9 @@ The retention value is bounded to a safe positive range by the application. The 
 | Brocade | Fibre Channel port state and Fabric OS interface statistics |
 | Cisco MDS | interface state/counters, transceiver, environment and version command output through NX-API |
 
-Register a Data Domain directly in Inventory to obtain DDOS telemetry. A Data Domain discovered only through PPDM is also shown as a component, but its detail is limited to the fields returned by PPDM. Network metrics are marked unavailable when the installed appliance does not expose a supported REST resource; SANFlow never estimates or fabricates them.
+Register a Data Domain directly in Inventory to obtain DDOS telemetry. A Data Domain discovered only through PPDM is also shown as a component, but its detail is limited to the fields returned by PPDM. Network metrics are marked unavailable when the installed appliance does not expose a supported REST resource; San Flow never estimates or fabricates them.
 
-For switches, the dashboard presents common fields such as status, speed, utilization/txwait, attenuation or optical power, errors and buffer credits when present. The **Todos os dados coletados** section keeps the complete response/command output, including vendor-specific fields not mapped to the common table.
+For switches, the dashboard presents common fields such as status, speed, utilization/txwait, attenuation or optical power, errors and buffer credits when present. The **All collected data** section keeps the complete response/command output, including vendor-specific fields not mapped to the common table.
 
 ## API
 

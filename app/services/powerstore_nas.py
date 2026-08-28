@@ -63,7 +63,7 @@ class PowerStoreNASClient(PowerStoreClient):
                 "POST",
                 "/api/rest/file_system",
                 None,
-                "resposta sem id do file system",
+                "Response has no file system ID",
             )
         return {**created, "already_exists": False}
 
@@ -100,7 +100,7 @@ class PowerStoreNASClient(PowerStoreClient):
                 "POST",
                 f"/api/rest/{endpoint}",
                 None,
-                "resposta sem id do share",
+                "Response has no share ID",
             )
         return {
             **created,
@@ -117,7 +117,7 @@ class PowerStoreNASClient(PowerStoreClient):
         share_id = share.get("id")
         if not share_id:
             raise ExternalAPIError(
-                "PowerStore NAS", "GET", "/api/rest/share", None, "share sem id para publicação"
+                "PowerStore NAS", "GET", "/api/rest/share", None, "Share has no ID for publication"
             )
         published = self.get_share(str(share_id), options.get("nas_protocol", "NFS"))
         if not published.get("id"):
@@ -126,6 +126,6 @@ class PowerStoreNASClient(PowerStoreClient):
                 "GET",
                 f"/api/rest/share/{share_id}",
                 None,
-                "share não encontrado após a criação",
+                "Share not found after creation",
             )
         return {**published, "published": True}
