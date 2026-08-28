@@ -239,7 +239,7 @@ function fillSelect(id, items, label, placeholder) {
 }
 
 async function syncPowerStore() {
-  const id = $("#storageId").value; if (!id) return toast("Select um PowerStore.", true);
+  const id = $("#storageId").value; if (!id) return toast("Select a PowerStore system.", true);
   const button = $("#syncPowerStore"); button.disabled = true; button.textContent = "Syncing…";
   try {
     state.powerstoreOptions = await api(`/api/integrations/powerstore/${id}/options`);
@@ -260,7 +260,7 @@ function updateDdDependentOptions() {
 }
 
 async function syncPpdm() {
-  const id = $("#ppdmId").value; if (!id) return toast("Select um PPDM.", true);
+  const id = $("#ppdmId").value; if (!id) return toast("Select a PPDM system.", true);
   const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/options`);
