@@ -1,48 +1,48 @@
-# Etapas de implementacao
+# Implementation stages
 
-As branches de integracao sao cumulativas. Cada etapa mantem o fluxo anterior e adiciona um dominio.
+Integration branches are cumulative. Each stage keeps the previous flow and adds one domain.
 
 | Etapa | Branch | Entrega |
 | --- | --- | --- |
-| 0 | `main` | Volume individual PowerStore |
+| 0 | `main` | Individual volume PowerStore |
 | 1 | `feature/powerstore-block` | Volumes individuais e grupos de volumes block PowerStore |
 | 2 | `feature/powermax-storage-groups` | Storage Groups PowerMax, masking views para hosts e zoning Brocade |
-| 3 | `feature/powerstore-nas` | File systems/shares PowerStore NAS, publicacao e rotina PPDM NAS |
-| 4 | `feature/powerscale-nas` | Shares SMB/NFS PowerScale, publicacao e rotina PPDM NAS |
-| 5 | `feature/dell-unity-nas` | Shares CIFS/NFS Dell Unity, publicacao e rotina PPDM NAS |
+| 3 | `feature/powerstore-nas` | File systems/shares PowerStore NAS, publication e rotina PPDM NAS |
+| 4 | `feature/powerscale-nas` | Shares SMB/NFS PowerScale, publication e rotina PPDM NAS |
+| 5 | `feature/dell-unity-nas` | Shares CIFS/NFS Dell Unity, publication e rotina PPDM NAS |
 
-## Fluxo de backup de storage
+## Storage backup flow
 
-Para volumes block, a execucao segue esta ordem:
+Para volumes block, a execution segue esta ordem:
 
 1. validar hosts, WWPNs, fabrics, credenciais e capacidade;
-2. criar a LUN ou o grupo de volumes no array;
-3. apresentar a LUN aos hosts (mappings PowerStore ou masking view PowerMax);
-4. criar/ativar as zonas Brocade quando habilitado;
-5. criar ou reutilizar a rotina PPDM com Data Domain, interface, storage unit, agenda e retencao;
+2. create a LUN ou o grupo de volumes no array;
+3. present a LUN aos hosts (mappings PowerStore ou masking view PowerMax);
+4. create/activate Brocade zones when enabled;
+5. create ou reutilizar a rotina PPDM com Data Domain, interface, storage unit, schedule e retention;
 6. confirmar o recurso e registrar IDs no workflow.
 
 O PowerMax usa Storage Group + masking view. O Port Group precisa existir no array e pode ser
-informado no cadastro do PowerMax ou na solicitacao. Hosts inexistentes podem ser criados pela
-selecao `createHostParam`, usando os WWPNs cadastrados.
+provided in PowerMax inventory or in the request. Missing hosts can be created by the
+the `createHostParam` selection, using the registered WWPNs.
 
 ## Fluxo NAS
 
-Para NAS, a execucao nao usa apresentacao de LUN nem zoning FC:
+For NAS resources, the execution does not use LUN presentation or FC zoning:
 
 1. validar o servidor NAS, protocolo, caminho e credenciais;
-2. criar ou reconciliar o share; em PowerStore `NAS_DATA` tambem cria o file system;
+2. create or reconcile the share; on PowerStore, `NAS_DATA` also creates the file system;
 3. publicar o share e confirmar a leitura dele no array;
-4. criar ou reutilizar a rotina PPDM NAS com o Data Domain selecionado, interface, storage unit,
-   agenda, retencao e NAS Protection Engine;
-5. aguardar a descoberta do asset no PPDM e associa-lo a politica.
+4. create or reuse the PPDM NAS policy with the selected Data Domain, interface, and storage unit,
+   schedule, retention e NAS Protection Engine;
+5. wait for the asset to be discovered in PPDM and assign it to the policy.
 
-O Data Domain e o NAS Protection Engine sao obrigatorios ao criar uma politica NAS. A aplicacao
-configura a referencia na politica, mas nao instala nem provisiona o Protection Engine.
+O Data Domain and the NAS Protection Engine sao obrigatorios ao create uma policy NAS. A application
+configures the reference in the policy, but does not install or provision the Protection Engine.
 
-## Validacao
+## Validation
 
-Na raiz do repositorio:
+From the repository root:
 
 ```powershell
 $env:PYTHONPATH = (Get-Location).Path

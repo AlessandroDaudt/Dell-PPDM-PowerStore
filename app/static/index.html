@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Automação unificada de LUNs Dell PowerStore, zoning Brocade e proteção PPDM." />
-    <title>SANFlow Dell</title>
+    <meta name="description" content="Unified LUN automation for Dell PowerStore, Brocade zoning, and PPDM protection." />
+    <title>San Flow</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -15,35 +15,35 @@
       <div class="login-orbit orbit-two"></div>
       <form id="loginForm" class="login-card">
         <div class="brand-mark">SF</div>
-        <p class="eyebrow">DELL INFRASTRUCTURE AUTOMATION</p>
-        <h1>Uma LUN. Um fluxo. Zero silos.</h1>
-        <p class="muted">PowerStore, hosts físicos, Brocade e PPDM coordenados em uma única operação.</p>
-        <label>Usuário<input name="username" autocomplete="username" value="admin" required /></label>
-        <label>Senha<input name="password" type="password" autocomplete="current-password" required /></label>
+        <p class="eyebrow">STORAGE INFRASTRUCTURE AUTOMATION</p>
+        <h1>One LUN. One flow. Zero silos.</h1>
+        <p class="muted">PowerStore, physical hosts, Brocade, and PPDM coordinated in one operation.</p>
+        <label>Username<input name="username" autocomplete="username" value="admin" required /></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
         <p id="loginError" class="form-error"></p>
-        <button class="button primary wide" type="submit">Entrar no control plane</button>
+        <button class="button primary wide" type="submit">Enter the control plane</button>
       </form>
     </section>
 
     <div id="appShell" class="app-shell hidden">
       <aside class="sidebar">
-        <div class="brand"><span class="brand-mark small">SF</span><span>SANFlow <b>Dell</b></span></div>
-        <nav aria-label="Navegação principal">
-          <button class="nav-item active" data-route="home"><span>⌂</span>Visão geral</button>
-          <button class="nav-item" data-route="inventory"><span>▦</span>Inventário</button>
+        <div class="brand"><span class="brand-mark small">SF</span><span>San Flow</span></div>
+        <nav aria-label="Main navigation">
+          <button class="nav-item active" data-route="home"><span>⌂</span>Overview</button>
+          <button class="nav-item" data-route="inventory"><span>▦</span>Inventory</button>
           <button class="nav-item" data-route="provision"><span>＋</span>Nova LUN</button>
-          <button class="nav-item" data-route="workflows"><span>↻</span>Execuções</button>
-          <button class="nav-item" data-route="docs"><span>?</span>Documentação</button>
+          <button class="nav-item" data-route="workflows"><span>↻</span>Runs</button>
+          <button class="nav-item" data-route="docs"><span>?</span>Documentation</button>
         </nav>
         <div class="sidebar-foot">
           <span class="live-dot"></span>
-          <div><strong>Control plane</strong><small>API disponível</small></div>
+          <div><strong>Control plane</strong><small>API available</small></div>
         </div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <div><p class="eyebrow" id="pageEyebrow">CONTROL PLANE</p><h2 id="pageTitle">Visão geral</h2></div>
+          <div><p class="eyebrow" id="pageEyebrow">CONTROL PLANE</p><h2 id="pageTitle">Overview</h2></div>
           <div class="top-actions">
             <span class="mode-pill"><i></i> REST + Ansible</span>
             <button id="logoutButton" class="icon-button" title="Sair">↪</button>
@@ -53,19 +53,19 @@
         <section id="page-home" class="page active">
           <div class="hero">
             <div class="hero-copy">
-              <span class="hero-kicker">ORQUESTRAÇÃO PONTA A PONTA</span>
-              <h1>Da capacidade ao backup<br /><em>em uma única mudança.</em></h1>
-              <p>Valide o inventário, crie a LUN, apresente aos hosts, configure as fabrics e proteja os dados sem alternar entre consoles.</p>
+              <span class="hero-kicker">END-TO-END ORCHESTRATION</span>
+              <h1>From capacity to backup<br /><em>in one change.</em></h1>
+              <p>Validate inventory, create the LUN, present it to hosts, configure the fabrics, and protect the data without switching consoles.</p>
               <div class="hero-actions">
-                <button class="button primary" data-go="provision">Provisionar nova LUN</button>
-                <button class="button ghost" data-go="inventory">Revisar inventário</button>
+                <button class="button primary" data-go="provision">Provision a new LUN</button>
+                <button class="button ghost" data-go="inventory">Review inventory</button>
               </div>
             </div>
             <div class="hero-status">
-              <p class="eyebrow">POSTURA OPERACIONAL</p>
-              <strong id="heroReadiness">Aguardando inventário</strong>
+              <p class="eyebrow">OPERATIONAL READINESS</p>
+              <strong id="heroReadiness">Waiting for inventory</strong>
               <div class="readiness-bar"><span id="readinessBar"></span></div>
-              <small id="readinessText">Cadastre os quatro domínios para iniciar.</small>
+              <small id="readinessText">Register the four domains to get started.</small>
             </div>
           </div>
 
@@ -73,189 +73,189 @@
 
           <section class="panel flow-panel">
             <div class="section-heading">
-              <div><p class="eyebrow">FLUXO AUTOMATIZADO</p><h3>O que acontece por baixo</h3></div>
-              <span class="safe-chip">● Dry-run como padrão</span>
+              <div><p class="eyebrow">AUTOMATED FLOW</p><h3>What happens underneath</h3></div>
+              <span class="safe-chip">● Dry-run by default</span>
             </div>
-            <div class="flow-map" aria-label="Fluxo de provisionamento">
-              <article class="flow-node"><span class="node-number">01</span><i class="node-icon powerstore">PS</i><h4>Pré-validação</h4><p>WWNs, fabrics, credenciais e políticas.</p></article>
+            <div class="flow-map" aria-label="Provisioning flow">
+              <article class="flow-node"><span class="node-number">01</span><i class="node-icon powerstore">PS</i><h4>Pre-validation</h4><p>WWNs, fabrics, credentials, and policies.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">02</span><i class="node-icon powerstore">LUN</i><h4>PowerStore</h4><p>Cria volume via <code>POST /volume</code>.</p></article>
+              <article class="flow-node"><span class="node-number">02</span><i class="node-icon powerstore">LUN</i><h4>PowerStore</h4><p>Creates a volume via <code>POST /volume</code>.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">03</span><i class="node-icon host">H</i><h4>Hosts físicos</h4><p>Registra WWPNs e cria os mappings.</p></article>
+              <article class="flow-node"><span class="node-number">03</span><i class="node-icon host">H</i><h4>Physical hosts</h4><p>Registers WWPNs and creates mappings.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">04</span><i class="node-icon brocade">B</i><h4>Brocade</h4><p>Ansible aplica zoning nas fabrics A/B.</p></article>
+              <article class="flow-node"><span class="node-number">04</span><i class="node-icon brocade">B</i><h4>Brocade</h4><p>Ansible applies zoning across fabrics A/B.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">05</span><i class="node-icon ppdm">P</i><h4>PPDM</h4><p>Descobre o asset e associa a proteção.</p></article>
+              <article class="flow-node"><span class="node-number">05</span><i class="node-icon ppdm">P</i><h4>PPDM</h4><p>Discovers the asset and assigns protection.</p></article>
               <b class="flow-arrow">→</b>
-              <article class="flow-node"><span class="node-number">06</span><i class="node-icon dd">DD</i><h4>Data Domain</h4><p>Retenção, storage unit e rotina ativas.</p></article>
+              <article class="flow-node"><span class="node-number">06</span><i class="node-icon dd">DD</i><h4>Data Domain</h4><p>Retention, storage unit, and schedule active.</p></article>
             </div>
           </section>
 
           <div class="home-grid">
             <section class="panel">
-              <div class="section-heading"><div><p class="eyebrow">ÚLTIMAS EXECUÇÕES</p><h3>Atividade recente</h3></div><button class="text-button" data-go="workflows">Ver todas</button></div>
-              <div id="recentWorkflows" class="compact-list empty-state">Nenhuma execução registrada.</div>
+              <div class="section-heading"><div><p class="eyebrow">LATEST RUNS</p><h3>Recent activity</h3></div><button class="text-button" data-go="workflows">View all</button></div>
+              <div id="recentWorkflows" class="compact-list empty-state">No runs recorded.</div>
             </section>
             <section class="panel guardrail-panel">
-              <p class="eyebrow">GUARDRAILS</p><h3>Mudanças sob controle</h3>
-              <ul class="check-list"><li>Credenciais cifradas no banco</li><li>CSRF token nativo do PowerStore</li><li>Checksum da ZoneDB antes do commit</li><li>Trilha de auditoria por etapa</li></ul>
+              <p class="eyebrow">GUARDRAILS</p><h3>Changes under control</h3>
+              <ul class="check-list"><li>Credentials encrypted in the database</li><li>Native PowerStore CSRF token</li><li>ZoneDB checksum before commit</li><li>Per-step audit trail</li></ul>
             </section>
           </div>
         </section>
 
         <section id="page-inventory" class="page">
-          <div class="page-intro"><div><p>Cadastre endpoints, credenciais de API e WWNs por fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ Novo equipamento</button></div>
-          <div class="filter-row"><button class="filter active" data-filter="ALL">Todos</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="UNITY">Dell Unity</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
+          <div class="page-intro"><div><p>Register management endpoints, API credentials, and WWNs by fabric.</p></div><button id="addEquipmentButton" class="button primary">＋ New equipment</button></div>
+          <div class="filter-row"><button class="filter active" data-filter="ALL">All</button><button class="filter" data-filter="POWERSTORE">PowerStore</button><button class="filter" data-filter="POWERMAX">PowerMax</button><button class="filter" data-filter="POWERSTORE_NAS">PowerStore NAS</button><button class="filter" data-filter="POWERSCALE">PowerScale</button><button class="filter" data-filter="UNITY">Dell Unity</button><button class="filter" data-filter="PPDM">PPDM</button><button class="filter" data-filter="BROCADE">Brocade</button><button class="filter" data-filter="HOST">Hosts</button></div>
           <div id="inventoryGrid" class="inventory-grid"></div>
         </section>
 
         <section id="page-provision" class="page">
           <form id="provisionForm">
             <div class="provision-head">
-              <div><span class="hero-kicker">NOVO PROVISIONAMENTO</span><h3>Descreva o resultado. O fluxo cuida da sequência.</h3></div>
-              <label class="switch-label"><input id="dryRun" type="checkbox" checked /><span></span><b>Dry-run seguro</b></label>
+              <div><span class="hero-kicker">NEW PROVISIONING</span><h3>Describe the outcome. The flow handles the sequence.</h3></div>
+              <label class="switch-label"><input id="dryRun" type="checkbox" checked /><span></span><b>Safe dry-run</b></label>
             </div>
 
             <section class="form-section">
               <div class="section-index">01</div><div class="section-body">
-                <div class="section-heading"><div><p class="eyebrow">RECURSO</p><h3>Storage ou share NAS</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sincronizar opções</button></div>
+                <div class="section-heading"><div><p class="eyebrow">RESOURCE</p><h3>Storage or NAS share</h3></div><button id="syncPowerStore" type="button" class="button compact ghost">↻ Sync options</button></div>
                 <div class="form-grid three">
-                  <label>PowerStore<select id="storageId" required><option value="">Selecione</option></select></label>
-                  <label>Recurso<select id="resourceType"><option value="VOLUME">Volume individual</option><option value="VOLUME_GROUP">Grupo de volumes block</option><option value="POWERMAX_STORAGE_GROUP">Storage Group PowerMax</option><option value="NAS_SHARE">Share NAS</option><option value="NAS_DATA">Dados/file system NAS</option></select></label>
-                  <label>Nome da LUN<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
-                  <label>Tamanho (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
-                  <label>Appliance<select id="applianceId"><option value="">Seleção automática</option></select></label>
-                  <label>Performance policy<select id="performancePolicy"><option value="">Padrão do array</option></select></label>
-                  <label>Protection policy local<select id="localProtectionPolicy"><option value="">Sem política local</option></select></label>
-                  <label>LUN ID desejado<input id="lunNumber" type="number" min="0" max="16383" placeholder="Automático" /></label>
-                  <label class="span-two">Descrição<input id="volumeDescription" value="Criado pelo SANFlow Dell" /></label>
+                  <label>PowerStore<select id="storageId" required><option value="">Select</option></select></label>
+                  <label>Resource<select id="resourceType"><option value="VOLUME">Individual volume</option><option value="VOLUME_GROUP">Block volume group</option><option value="POWERMAX_STORAGE_GROUP">Storage Group PowerMax</option><option value="NAS_SHARE">NAS share</option><option value="NAS_DATA">NAS data/file system</option></select></label>
+                  <label>LUN name<input id="volumeName" placeholder="PRD_ORACLE_001" pattern="[A-Za-z0-9_.-]+" required /></label>
+                  <label>Size (GiB)<input id="volumeSize" type="number" min="1" max="65536" value="100" required /></label>
+                  <label>Appliance<select id="applianceId"><option value="">Auto-select</option></select></label>
+                  <label>Performance policy<select id="performancePolicy"><option value="">Array default</option></select></label>
+                  <label>Protection policy local<select id="localProtectionPolicy"><option value="">No local policy</option></select></label>
+                  <label>Requested LUN ID<input id="lunNumber" type="number" min="0" max="16383" placeholder="Automatic" /></label>
+                  <label class="span-two">Description<input id="volumeDescription" value="Created by San Flow" /></label>
                 </div>
                 <div id="volumeGroupFields" class="form-grid two hidden">
-                  <label>Nome do grupo<input id="groupName" placeholder="PRD_ORACLE_GRP" pattern="[A-Za-z0-9_.-]+" /></label>
-                  <label>Descrição do grupo<input id="groupDescription" placeholder="Grupo write-order consistent" /></label>
-                  <label class="span-two">Volumes membros (JSON)<textarea id="groupMembers" rows="4" placeholder='[{"name":"PRD_DATA_01","size_gib":100},{"name":"PRD_LOG_01","size_gib":50}]'></textarea><small>Cada membro deve informar name e size_gib.</small></label>
+                  <label>Group name<input id="groupName" placeholder="PRD_ORACLE_GRP" pattern="[A-Za-z0-9_.-]+" /></label>
+                  <label>Group description<input id="groupDescription" placeholder="Write-order consistent group" /></label>
+                  <label class="span-two">Member volumes (JSON)<textarea id="groupMembers" rows="4" placeholder='[{"name":"PRD_DATA_01","size_gib":100},{"name":"PRD_LOG_01","size_gib":50}]'></textarea><small>Each member must provide name and size_gib.</small></label>
                 </div>
                 <div id="powermaxFields" class="form-grid three hidden">
-                  <label>Quantidade de volumes<input id="powermaxVolumeCount" type="number" min="1" max="4096" value="1" /></label>
-                  <label>Prefixo dos volumes<input id="powermaxVolumePrefix" placeholder="APP_DATA" pattern="[A-Za-z0-9_.-]+" /></label>
+                  <label>Volume count<input id="powermaxVolumeCount" type="number" min="1" max="4096" value="1" /></label>
+                  <label>Volume prefix<input id="powermaxVolumePrefix" placeholder="APP_DATA" pattern="[A-Za-z0-9_.-]+" /></label>
                   <label>SRP ID<input id="powermaxSrp" placeholder="SRP_1" /></label>
                   <label>SLO ID<input id="powermaxSlo" placeholder="Diamond" /></label>
-                  <label>Port Group PowerMax<select id="powermaxPortGroup"><option value="">Sincronize o PowerMax</option></select></label>
-                  <label>Prefixo da Masking View<input id="powermaxMaskingViewPrefix" placeholder="APP_MV" pattern="[A-Za-z0-9_.-]+" /></label>
-                  <label>Emulação<select id="powermaxEmulation"><option>FBA</option><option>CKD</option></select></label>
+                  <label>Port Group PowerMax<select id="powermaxPortGroup"><option value="">Sync PowerMax first</option></select></label>
+                  <label>Masking View prefix<input id="powermaxMaskingViewPrefix" placeholder="APP_MV" pattern="[A-Za-z0-9_.-]+" /></label>
+                  <label>Emulation<select id="powermaxEmulation"><option>FBA</option><option>CKD</option></select></label>
                 </div>
                 <div id="nasFields" class="form-grid three hidden">
-                  <label>Protocolo<select id="nasProtocol"><option>NFS</option><option>SMB</option></select></label>
-                  <label>Caminho do share/dados<input id="nasPath" placeholder="/data/financeiro ou share" /></label>
-                  <label>NAS server<select id="nasServerId"><option value="">Automático</option></select></label>
-                  <label>File system<select id="nasFileSystemId"><option value="">Automático</option></select></label>
+                  <label>Protocol<select id="nasProtocol"><option>NFS</option><option>SMB</option></select></label>
+                  <label>Share/data path<input id="nasPath" placeholder="/data/financeiro ou share" /></label>
+                  <label>NAS server<select id="nasServerId"><option value="">Automatic</option></select></label>
+                  <label>File system<select id="nasFileSystemId"><option value="">Automatic</option></select></label>
                 </div>
               </div>
             </section>
 
             <section class="form-section">
               <div class="section-index">02</div><div class="section-body">
-                <div class="section-heading"><div><p class="eyebrow">CONECTIVIDADE</p><h3>Hosts e fabrics</h3></div></div>
-                <div class="selection-columns"><div><label class="label-title">Hosts físicos</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Switches Brocade</label><div id="brocadeChoices" class="choice-list"></div></div></div>
+                <div class="section-heading"><div><p class="eyebrow">CONNECTIVITY</p><h3>Hosts and fabrics</h3></div></div>
+                <div class="selection-columns"><div><label class="label-title">Physical hosts</label><div id="hostChoices" class="choice-list"></div></div><div><label class="label-title">Brocade switches</label><div id="brocadeChoices" class="choice-list"></div></div></div>
                 <div class="inline-options">
-                  <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Executar zoning</label>
-                  <label>Configuração ativa<input id="zoneConfig" value="SANFLOW_CFG" /></label>
-                  <label>Template da zone<input id="zoneTemplate" value="Z_{host}_{storage}_{fabric}" /></label>
+                  <label class="check-field"><input id="zoningEnabled" type="checkbox" checked /> Run zoning</label>
+                  <label>Active configuration<input id="zoneConfig" value="SANFLOW_CFG" /></label>
+                  <label>Zone template<input id="zoneTemplate" value="Z_{host}_{storage}_{fabric}" /></label>
                   <label class="check-field"><input id="peerZoning" type="checkbox" /> Peer zoning</label>
-                  <label class="check-field"><input id="activateConfig" type="checkbox" checked /> Ativar configuração</label>
+                  <label class="check-field"><input id="activateConfig" type="checkbox" checked /> Activate configuration</label>
                 </div>
               </div>
             </section>
 
             <section class="form-section">
               <div class="section-index">03</div><div class="section-body">
-                <div class="section-heading"><div><p class="eyebrow">PROTEÇÃO</p><h3>Backup no PPDM</h3></div><button id="syncPpdm" type="button" class="button compact ghost">↻ Buscar Data Domains e rotinas</button></div>
+                <div class="section-heading"><div><p class="eyebrow">PROTECTION</p><h3>PPDM backup</h3></div><button id="syncPpdm" type="button" class="button compact ghost">↻ Fetch Data Domains and policies</button></div>
                 <div class="form-grid three">
-                  <label>PPDM<select id="ppdmId"><option value="">Selecione</option></select></label>
-                  <label>Estratégia<select id="backupMode"><option value="EXISTING_POLICY">Usar política existente</option><option value="CREATE_POLICY">Criar nova política</option><option value="NONE">Sem backup PPDM</option></select></label>
-                  <label id="existingPolicyField">Política existente<select id="existingPolicy"><option value="">Sincronize o PPDM</option></select></label>
-                  <label id="newPolicyField" class="hidden">Nome da nova política<input id="newPolicyName" placeholder="POL_PRD_DAILY" /></label>
-                  <label id="dataDomainField" class="hidden">Data Domain<select id="dataDomain"><option value="">Sincronize o PPDM</option></select></label>
-                  <label id="ddInterfaceField" class="hidden">Interface preferencial<select id="ddInterface"><option value="">Automática</option></select></label>
-                  <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto provisionar</option></select></label>
-                  <label id="nasEngineField" class="hidden">NAS Protection Engine<select id="nasProtectionEngine"><option value="">Selecione após sincronizar</option></select></label>
-                  <label>Frequência<select id="backupFrequency"><option>DAILY</option><option>HOURLY</option><option>WEEKLY</option><option>MONTHLY</option></select></label>
-                  <label>Início UTC<input id="backupStart" type="time" step="1" value="22:00:00" /></label>
-                  <label>Janela (horas)<input id="backupDuration" type="number" min="1" max="24" value="8" /></label>
-                  <label>Intervalo<input id="backupInterval" type="number" min="1" max="24" value="1" /></label>
-                  <label>Retenção<input id="retentionInterval" type="number" min="1" max="3650" value="30" /></label>
-                  <label>Unidade<select id="retentionUnit"><option>DAY</option><option>WEEK</option><option>MONTH</option><option>YEAR</option></select></label>
-                  <label>Nível do backup<select id="backupLevel"><option>SYNTHETIC_FULL</option><option>FULL</option></select></label>
-                  <label>Consistência<select id="dataConsistency"><option>CRASH_CONSISTENT</option><option>APPLICATION_CONSISTENT</option></select></label>
-                  <label>Dia do mês<input id="dayOfMonth" type="number" min="1" max="31" value="1" /></label>
-                  <label>Dias da semana<input id="weekdays" value="SATURDAY" placeholder="MONDAY,WEDNESDAY" /></label>
+                  <label>PPDM<select id="ppdmId"><option value="">Select</option></select></label>
+                  <label>Strategy<select id="backupMode"><option value="EXISTING_POLICY">Use an existing policy</option><option value="CREATE_POLICY">Create a new policy</option><option value="NONE">No PPDM backup</option></select></label>
+                  <label id="existingPolicyField">Existing policy<select id="existingPolicy"><option value="">Sync PPDM first</option></select></label>
+                  <label id="newPolicyField" class="hidden">New policy name<input id="newPolicyName" placeholder="POL_PRD_DAILY" /></label>
+                  <label id="dataDomainField" class="hidden">Data Domain<select id="dataDomain"><option value="">Sync PPDM first</option></select></label>
+                  <label id="ddInterfaceField" class="hidden">Preferred interface<select id="ddInterface"><option value="">Automatic</option></select></label>
+                  <label id="storageUnitField" class="hidden">Storage unit<select id="storageUnit"><option value="">Auto-provision</option></select></label>
+                  <label id="nasEngineField" class="hidden">NAS Protection Engine<select id="nasProtectionEngine"><option value="">Select after syncing</option></select></label>
+                  <label>Frequency<select id="backupFrequency"><option>DAILY</option><option>HOURLY</option><option>WEEKLY</option><option>MONTHLY</option></select></label>
+                  <label>UTC start<input id="backupStart" type="time" step="1" value="22:00:00" /></label>
+                  <label>Window (hours)<input id="backupDuration" type="number" min="1" max="24" value="8" /></label>
+                  <label>Interval<input id="backupInterval" type="number" min="1" max="24" value="1" /></label>
+                  <label>Retention<input id="retentionInterval" type="number" min="1" max="3650" value="30" /></label>
+                  <label>Unit<select id="retentionUnit"><option>DAY</option><option>WEEK</option><option>MONTH</option><option>YEAR</option></select></label>
+                  <label>Backup level<select id="backupLevel"><option>SYNTHETIC_FULL</option><option>FULL</option></select></label>
+                  <label>Consistency<select id="dataConsistency"><option>CRASH_CONSISTENT</option><option>APPLICATION_CONSISTENT</option></select></label>
+                  <label>Day of month<input id="dayOfMonth" type="number" min="1" max="31" value="1" /></label>
+                  <label>Days of week<input id="weekdays" value="SATURDAY" placeholder="MONDAY,WEDNESDAY" /></label>
                 </div>
                 <div class="option-strip">
-                  <label><input id="retentionLock" type="checkbox" /> Retention Lock</label><label><input id="encryptedBackup" type="checkbox" checked /> Criptografado</label><label><input id="snapshotEnabled" type="checkbox" /> Snapshot local</label><label><input id="replicationEnabled" type="checkbox" /> Replicação</label><label><input id="cloudTierEnabled" type="checkbox" /> Cloud Tier</label>
+                  <label><input id="retentionLock" type="checkbox" /> Retention Lock</label><label><input id="encryptedBackup" type="checkbox" checked /> Encrypted</label><label><input id="snapshotEnabled" type="checkbox" /> Local snapshot</label><label><input id="replicationEnabled" type="checkbox" /> Replication</label><label><input id="cloudTierEnabled" type="checkbox" /> Cloud Tier</label>
                 </div>
                 <div id="policySummary" class="policy-summary hidden"></div>
-                <details class="advanced"><summary>Payload avançado (JSON)</summary><p>Mesclado ao payload da política. Snapshot, replicação e Cloud Tier exigem o objetivo completo da versão instalada em <code>additional_objectives</code>; assim nenhuma opção é ignorada.</p><textarea id="rawOverrides" rows="5" placeholder='{"additional_objectives": [{"type": "REPLICATION", "...": "campos oficiais da sua versão"}]}'></textarea></details>
+                <details class="advanced"><summary>Advanced payload (JSON)</summary><p>Merged into the policy payload. Snapshot, replication, and Cloud Tier require the complete objective definition for the installed version in <code>additional_objectives</code>; so no option is silently ignored.</p><textarea id="rawOverrides" rows="5" placeholder='{"additional_objectives": [{"type": "REPLICATION", "...": "official fields for your version"}]}'></textarea></details>
               </div>
             </section>
 
-            <div class="submit-bar"><div><strong>Pronto para orquestrar?</strong><small id="submitHint">O dry-run gera o plano sem modificar a infraestrutura.</small></div><button class="button primary" type="submit">Executar fluxo completo →</button></div>
+            <div class="submit-bar"><div><strong>Ready to orchestrate?</strong><small id="submitHint">Dry-run generates the plan without modifying infrastructure.</small></div><button class="button primary" type="submit">Run complete flow →</button></div>
           </form>
         </section>
 
         <section id="page-workflows" class="page">
-          <div class="page-intro"><p>Acompanhe cada chamada e veja exatamente onde uma execução parou.</p><button id="refreshWorkflows" class="button ghost">↻ Atualizar</button></div>
+          <div class="page-intro"><p>Track every call and see exactly where a run stopped.</p><button id="refreshWorkflows" class="button ghost">↻ Refresh</button></div>
           <div id="workflowList" class="workflow-list"></div>
         </section>
 
         <section id="page-docs" class="page">
-          <div class="docs-hero"><span class="hero-kicker">RUNBOOK INTEGRADO</span><h3>Do primeiro cadastro ao go-live.</h3><p>A API da própria aplicação também está documentada e pode ser usada por pipelines externos.</p><a class="button primary" href="/docs" target="_blank" rel="noreferrer">Abrir OpenAPI interativa ↗</a></div>
+          <div class="docs-hero"><span class="hero-kicker">INTEGRATED RUNBOOK</span><h3>From first registration to go-live.</h3><p>The application API is also documented and can be used by external pipelines.</p><a class="button primary" href="/docs" target="_blank" rel="noreferrer">Open interactive OpenAPI ↗</a></div>
           <div class="docs-grid">
-            <article class="panel"><span>01</span><h4>Cadastre o inventário</h4><p>Inclua os endpoints de gerenciamento, contas de automação, validação TLS e todos os WWPNs separados por fabric.</p></article>
-            <article class="panel"><span>02</span><h4>Teste em dry-run</h4><p>Revise requests planejadas, zones, mappings e política antes de permitir mudanças reais.</p></article>
-            <article class="panel"><span>03</span><h4>Habilite o modo live</h4><p>Desmarque o dry-run apenas em janela aprovada e acompanhe as seis etapas no histórico.</p></article>
-            <article class="panel"><span>04</span><h4>Trate falhas por domínio</h4><p>O volume criado nunca é apagado automaticamente. Consulte o detalhe e faça a remediação consciente.</p></article>
+            <article class="panel"><span>01</span><h4>Register the inventory</h4><p>Add management endpoints, automation accounts, TLS validation, and all WWPNs separated by fabric.</p></article>
+            <article class="panel"><span>02</span><h4>Test in dry-run</h4><p>Review planned requests, zones, mappings, and the policy before allowing real changes.</p></article>
+            <article class="panel"><span>03</span><h4>Enable live mode</h4><p>Disable dry-run only during an approved window and follow all six steps in the history.</p></article>
+            <article class="panel"><span>04</span><h4>Handle failures by domain</h4><p>The created volume is never deleted automatically. Review the details and remediate consciously.</p></article>
           </div>
-          <section class="panel references"><p class="eyebrow">FONTES OFICIAIS</p><h3>Contratos usados na implementação</h3><div class="reference-links"><a href="https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md" target="_blank" rel="noreferrer">Dell PowerStore REST API ↗</a><a href="https://developer.dell.com/apis/4378" target="_blank" rel="noreferrer">Dell PPDM Public REST API ↗</a><a href="https://docs.broadcom.com/doc/53-1004781" target="_blank" rel="noreferrer">Broadcom Fabric OS REST/YANG ↗</a></div></section>
+          <section class="panel references"><p class="eyebrow">OFFICIAL SOURCES</p><h3>Contracts used in the implementation</h3><div class="reference-links"><a href="https://developer.dell.com/apis/3898/versions/3.2.0/docs/Intro-files/01-Overview/01-The-PowerStore-REST-API.md" target="_blank" rel="noreferrer">Dell PowerStore REST API ↗</a><a href="https://developer.dell.com/apis/4378" target="_blank" rel="noreferrer">Dell PPDM Public REST API ↗</a><a href="https://docs.broadcom.com/doc/53-1004781" target="_blank" rel="noreferrer">Broadcom Fabric OS REST/YANG ↗</a></div></section>
         </section>
       </main>
     </div>
 
     <dialog id="equipmentDialog">
       <form id="equipmentForm" method="dialog">
-        <div class="dialog-head"><div><p class="eyebrow">INVENTÁRIO</p><h3 id="equipmentDialogTitle">Novo equipamento</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
+        <div class="dialog-head"><div><p class="eyebrow">INVENTORY</p><h3 id="equipmentDialogTitle">New equipment</h3></div><button type="button" class="icon-button" data-close-dialog>×</button></div>
         <input id="equipmentId" type="hidden" />
         <div class="form-grid two">
-  <label>Tipo<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
-          <label>Nome<input id="equipmentName" required placeholder="ps-prd-01" /></label>
-          <label class="network-field">Endereço de gerenciamento<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
+  <label>Type<select id="equipmentType" required><option>POWERSTORE</option><option>POWERMAX</option><option>POWERSTORE_NAS</option><option>POWERSCALE</option><option>UNITY</option><option>PPDM</option><option>BROCADE</option><option>HOST</option></select></label>
+          <label>Name<input id="equipmentName" required placeholder="ps-prd-01" /></label>
+          <label class="network-field">Management address<input id="equipmentAddress" placeholder="10.10.10.20 ou FQDN" /></label>
           <label class="network-field">Porta API<input id="equipmentPort" type="number" min="1" max="65535" value="443" /></label>
-          <label class="network-field">Usuário API<input id="equipmentUsername" autocomplete="off" /></label>
-          <label class="network-field">Senha API<input id="equipmentPassword" type="password" autocomplete="new-password" placeholder="Mantida ao editar em branco" /></label>
+          <label class="network-field">API username<input id="equipmentUsername" autocomplete="off" /></label>
+          <label class="network-field">API password<input id="equipmentPassword" type="password" autocomplete="new-password" placeholder="Kept unchanged when editing blank" /></label>
         </div>
         <div class="form-grid three settings-fields">
           <label class="brocade-setting hidden">Fabric<input id="equipmentFabric" value="A" /></label>
           <label class="brocade-setting hidden">FID<input id="equipmentFid" type="number" value="128" /></label>
-          <label class="brocade-setting hidden">Config ativa<input id="equipmentActiveConfig" value="SANFLOW_CFG" /></label>
-          <label class="brocade-setting hidden">Geração FOS<select id="equipmentFos"><option>9.1</option><option>9.2</option></select></label>
-          <label class="host-setting hidden">Sistema operacional<select id="equipmentOs"><option>Linux</option><option>Windows</option><option>ESXi</option><option>AIX</option><option>HP-UX</option><option>Solaris</option></select></label>
-          <label class="host-setting hidden">PowerStore host ID<input id="equipmentHostId" placeholder="Opcional" /></label>
-          <label class="host-setting hidden">PowerMax host ID<input id="equipmentPowermaxHostId" placeholder="Opcional" /></label>
+          <label class="brocade-setting hidden">Active config<input id="equipmentActiveConfig" value="SANFLOW_CFG" /></label>
+          <label class="brocade-setting hidden">FOS generation<select id="equipmentFos"><option>9.1</option><option>9.2</option></select></label>
+          <label class="host-setting hidden">Operating system<select id="equipmentOs"><option>Linux</option><option>Windows</option><option>ESXi</option><option>AIX</option><option>HP-UX</option><option>Solaris</option></select></label>
+          <label class="host-setting hidden">PowerStore host ID<input id="equipmentHostId" placeholder="Optional" /></label>
+          <label class="host-setting hidden">PowerMax host ID<input id="equipmentPowermaxHostId" placeholder="Optional" /></label>
           <label class="powermax-setting hidden">Symmetrix ID<input id="equipmentSymmetrixId" placeholder="000123456789" /></label>
-          <label class="powermax-setting hidden">Versão da API<input id="equipmentApiVersion" value="100" placeholder="100 ou 92" /></label>
-          <label class="powermax-setting hidden">SRP padrão<input id="equipmentDefaultSrp" placeholder="SRP_1" /></label>
-          <label class="powermax-setting hidden">SLO padrão<input id="equipmentDefaultSlo" placeholder="Diamond" /></label>
-          <label class="powerscale-setting hidden">Versão PAPI<input id="equipmentOnefsApiVersion" value="3" placeholder="3" /></label>
-          <label class="unity-setting hidden">Versão Unity API<input id="equipmentUnityApiVersion" value="5.2" placeholder="5.2" /></label>
-          <label class="powermax-setting hidden">Port Group padrão<input id="equipmentDefaultPortGroup" placeholder="PG_PROD" /></label>
+          <label class="powermax-setting hidden">API version<input id="equipmentApiVersion" value="100" placeholder="100 ou 92" /></label>
+          <label class="powermax-setting hidden">Default SRP<input id="equipmentDefaultSrp" placeholder="SRP_1" /></label>
+          <label class="powermax-setting hidden">Default SLO<input id="equipmentDefaultSlo" placeholder="Diamond" /></label>
+          <label class="powerscale-setting hidden">PAPI version<input id="equipmentOnefsApiVersion" value="3" placeholder="3" /></label>
+          <label class="unity-setting hidden">Unity API version<input id="equipmentUnityApiVersion" value="5.2" placeholder="5.2" /></label>
+          <label class="powermax-setting hidden">Default Port Group<input id="equipmentDefaultPortGroup" placeholder="PG_PROD" /></label>
         </div>
-        <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validar certificado TLS</label>
-        <label>WWNs <small>um por linha: WWN, apelido, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>
+        <label class="check-field network-field"><input id="equipmentVerifySsl" type="checkbox" checked /> Validate TLS certificate</label>
+        <label>WWNs <small>one per line: WWN, alias, fabric, role (INITIATOR/TARGET/SWITCH)</small><textarea id="equipmentWwns" rows="6" placeholder="10:00:00:90:fa:12:34:56, hba0, A, INITIATOR"></textarea></label>
         <p id="equipmentError" class="form-error"></p>
-        <div class="dialog-actions"><button type="button" class="button ghost" data-close-dialog>Cancelar</button><button type="submit" class="button primary">Salvar equipamento</button></div>
+        <div class="dialog-actions"><button type="button" class="button ghost" data-close-dialog>Cancel</button><button type="submit" class="button primary">Save equipment</button></div>
       </form>
     </dialog>
 
-    <dialog id="workflowDialog"><div class="dialog-head"><div><p class="eyebrow">EXECUÇÃO</p><h3 id="workflowDialogTitle">Detalhe</h3></div><button type="button" class="icon-button" data-close-workflow>×</button></div><div id="workflowDetail"></div></dialog>
+    <dialog id="workflowDialog"><div class="dialog-head"><div><p class="eyebrow">RUN</p><h3 id="workflowDialogTitle">Details</h3></div><button type="button" class="icon-button" data-close-workflow>×</button></div><div id="workflowDetail"></div></dialog>
     <script src="/static/app.js" defer></script>
   </body>
 </html>

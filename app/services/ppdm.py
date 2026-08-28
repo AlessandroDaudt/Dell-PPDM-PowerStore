@@ -66,7 +66,7 @@ class PPDMClient:
             )
         data = response_data(response)
         if not isinstance(data, dict) or not data.get("access_token"):
-            raise ExternalAPIError("PPDM", "POST", "/api/v2/login", None, "token ausente")
+            raise ExternalAPIError("PPDM", "POST", "/api/v2/login", None, "token missing")
         self.token = data["access_token"]
         return self.token
 
@@ -315,19 +315,19 @@ class PPDMClient:
         if additional_objectives:
             container = "objectives" if v3 else "stages"
             if not isinstance(additional_objectives, list):
-                raise ValueError("raw_overrides.additional_objectives deve ser uma lista")
+                raise ValueError("raw_overrides.additional_objectives must be a list")
             payload.setdefault(container, []).extend(additional_objectives)
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
-            raise ExternalAPIError("PPDM", "POST", endpoint, None, "resposta sem id da política")
+            raise ExternalAPIError("PPDM", "POST", endpoint, None, "Response has no policy ID")
         return created
 
     def create_nas_policy(self, options: dict[str, Any]) -> dict[str, Any]:
         """Create a centralized NAS policy that uses a NAS Protection Engine."""
         if not options.get("data_domain_id"):
-            raise ValueError("data_domain_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
+            raise ValueError("data_domain_id is required for a NAS policy")
         if not options.get("nas_protection_engine_id"):
-            raise ValueError("nas_protection_engine_id Ã© obrigatÃ³rio para uma polÃ­tica NAS")
+            raise ValueError("nas_protection_engine_id is required for a NAS policy")
         version = self.get_version()
         v3 = self.uses_v3(version)
         schedule = self._schedule(options, v3)
@@ -419,7 +419,7 @@ class PPDMClient:
         created = self.request("POST", endpoint, json=payload)
         if not isinstance(created, dict) or not created.get("id"):
             raise ExternalAPIError(
-                "PPDM", "POST", endpoint, None, "resposta sem id da política NAS"
+                "PPDM", "POST", endpoint, None, "Response has no NAS policy ID"
             )
         return created
 
@@ -469,8 +469,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"NAS share {path or name} nao apareceu no inventario em {timeout}s; "
-                    "confirme a descoberta do NAS no PPDM e o NAS Protection Engine",
+                    f"NAS share {path or name} did not appear in inventory within {timeout}s; "
+                    "confirm NAS discovery in PPDM and the NAS Protection Engine",
                 )
             time.sleep(interval)
 
@@ -501,8 +501,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"volume {name} nao apareceu no inventario em {timeout}s; "
-                    "execute a descoberta do storage no PPDM",
+                    f"Volume {name} did not appear in inventory within {timeout}s; "
+                    "run storage discovery in PPDM",
                 )
             time.sleep(interval)
 
@@ -525,8 +525,8 @@ class PPDMClient:
                     "GET",
                     "/api/v2/assets",
                     None,
-                    f"volume {name} não apareceu no inventário em {timeout}s; "
-                    "execute a descoberta do PowerStore no PPDM",
+                    f"Volume {name} did not appear in inventory within {timeout}s; "
+                    "run PowerStore discovery in PPDM",
                 )
             time.sleep(interval)
 

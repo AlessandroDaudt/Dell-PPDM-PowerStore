@@ -32,7 +32,7 @@ Register the Unisphere endpoint, API version and `symmetrix_id`. The Storage Gro
 
 ### PowerStore NAS, PowerScale and Dell Unity NAS
 
-Register the NAS endpoint and select `NAS_SHARE` for an existing filesystem/path or `NAS_DATA` when PowerStore must create the file system first. Select the NAS protocol, path, NAS server and file system when the array exposes them. SANFlow creates or reconciles the share, reads it back to confirm publication, and does not request FC hosts or Brocade zoning.
+Register the NAS endpoint and select `NAS_SHARE` for an existing filesystem/path or `NAS_DATA` when PowerStore must create the file system first. Select the NAS protocol, path, NAS server and file system when the array exposes them. San Flow creates or reconciles the share, reads it back to confirm publication, and does not request FC hosts or Brocade zoning.
 
 ### Hosts
 
@@ -44,7 +44,7 @@ Register one principal switch per fabric. Provide the FID, active cfg and FOS ge
 
 ### PPDM
 
-Register the endpoint on port 8443. **Fetch Data Domains and policies** reads options at change time; SANFlow does not maintain a parallel catalog. For a new NAS policy, select both the Data Domain and the NAS Protection Engine. The engine must already be deployed and reachable by PPDM; this application only references it in the policy.
+Register the endpoint on port 8443. **Fetch Data Domains and policies** reads options at change time; San Flow does not maintain a parallel catalog. For a new NAS policy, select both the Data Domain and the NAS Protection Engine. The engine must already be deployed and reachable by PPDM; this application only references it in the policy.
 
 ## 4. First execution
 
