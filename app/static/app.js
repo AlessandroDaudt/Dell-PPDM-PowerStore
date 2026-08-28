@@ -223,7 +223,7 @@ async function handleInventoryAction(event) {
   const item = state.equipment.find((entry) => entry.id === Number(button.dataset.id)); if (!item) return;
   if (button.dataset.action === "edit") openEquipment(item);
   if (button.dataset.action === "test") {
-    button.disabled = true; button.textContent = "Testando…";
+    button.disabled = true; button.textContent = "Testing…";
     try { const result = await api(`/api/equipment/${item.id}/test`, { method: "POST" }); toast(`${item.name}: ${result.message || result.version || "connection valid"}`); }
     catch (error) { toast(error.message, true); }
     finally { button.disabled = false; button.textContent = "Test"; }
@@ -261,7 +261,7 @@ function updateDdDependentOptions() {
 
 async function syncPpdm() {
   const id = $("#ppdmId").value; if (!id) return toast("Select um PPDM.", true);
-  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Consultando…";
+  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/options`);
     fillSelect("#existingPolicy", state.ppdmOptions.policies, (item) => item.name || item.id, "Select a policy");
@@ -371,9 +371,9 @@ async function submitProvision(event) {
   const submit = $("#provisionForm button[type=submit]"); submit.disabled = true; submit.textContent = "Iniciando…";
   try {
     const workflow = await api("/api/workflows", { method: "POST", body });
-    toast(`Workflow #${workflow.id} iniciado.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
+    toast(`Workflow #${workflow.id} started.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
   } catch (error) { toast(error.message, true); }
-  finally { submit.disabled = false; submit.textContent = "Executar fluxo completo →"; }
+  finally { submit.disabled = false; submit.textContent = "Run complete flow →"; }
 }
 
 async function loadWorkflows() {
