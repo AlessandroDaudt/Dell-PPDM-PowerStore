@@ -196,9 +196,9 @@ class ProvisionRequest(BaseModel):
     @model_validator(mode="after")
     def validate_integrations(self):
         if self.zoning.enabled and not self.brocade_ids:
-            raise ValueError("selecione ao menos um Brocade quando o zoning estiver habilitado")
+            raise ValueError("select at least one Brocade switch when zoning is enabled")
         if self.backup.mode != "NONE" and self.ppdm_id is None:
-            raise ValueError("selecione um PPDM quando o backup estiver habilitado")
+            raise ValueError("select a PPDM system when backup is enabled")
         return self
 
 
