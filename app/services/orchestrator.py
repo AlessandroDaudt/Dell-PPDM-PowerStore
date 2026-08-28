@@ -627,7 +627,7 @@ class WorkflowRunner:
                 "zones": self.context.get("zones", []),
                 "policy_id": self.workflow.policy_id,
             }
-            return "Plano validado sem alterar os equipamentos", details
+            return "Plan validated without changing equipment", details
         storage: Equipment = self.context["storage"]
         if self.request["volume"].get("resource_type") in {"NAS_SHARE", "NAS_DATA"}:
             storage = self.context["storage"]
@@ -680,7 +680,7 @@ class WorkflowRunner:
         if not volume.get("id"):
             raise ValueError("PowerStore did not return the volume during final verification")
         return (
-            "Provisionamento verificado com sucesso",
+            "Provisioning verified successfully",
             {
                 "volume": volume,
                 "host_mappings": self.context.get("mappings", []),

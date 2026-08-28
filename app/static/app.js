@@ -55,7 +55,7 @@ function showApp() {
 
 const pageNames = {
   home: ["CONTROL PLANE", "Overview"], inventory: ["CONFIGURATION", "Inventory"],
-  provision: ["ORCHESTRATION", "Nova LUN"], workflows: ["OBSERVABILITY", "Runs"],
+  provision: ["ORCHESTRATION", "New LUN"], workflows: ["OBSERVABILITY", "Runs"],
   docs: ["OPERATION", "Documentation"],
 };
 
@@ -276,7 +276,7 @@ async function handleInventoryAction(event) {
   const item = state.equipment.find((entry) => entry.id === Number(button.dataset.id)); if (!item) return;
   if (button.dataset.action === "edit") openEquipment(item);
   if (button.dataset.action === "test") {
-    button.disabled = true; button.textContent = "Testando…";
+    button.disabled = true; button.textContent = "Testing…";
     try { const result = await api(`/api/equipment/${item.id}/test`, { method: "POST" }); toast(`${item.name}: ${result.message || result.version || "connection valid"}`); }
     catch (error) { toast(error.message, true); }
     finally { button.disabled = false; button.textContent = "Test"; }
@@ -325,7 +325,7 @@ function updateDdDependentOptions() {
 
 async function syncPpdm() {
   const id = $("#ppdmId").value; if (!id) return toast("Select um PPDM.", true);
-  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Consultando…";
+  const button = $("#syncPpdm"); button.disabled = true; button.textContent = "Fetching…";
   try {
     const nas = ["NAS_SHARE", "NAS_DATA"].includes($("#resourceType").value);
     state.ppdmOptions = await api(`/api/integrations/ppdm/${id}/${nas ? "nas-options" : "options"}`);
@@ -460,7 +460,7 @@ async function submitProvision(event) {
   const submit = $("#provisionForm button[type=submit]"); submit.disabled = true; submit.textContent = "Starting…";
   try {
     const workflow = await api("/api/workflows", { method: "POST", body });
-    toast(`Workflow #${workflow.id} iniciado.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
+    toast(`Workflow #${workflow.id} started.`); navigate("workflows"); await loadWorkflows(); openWorkflow(workflow.id); startPolling();
   } catch (error) { toast(error.message, true); }
   finally { submit.disabled = false; submit.textContent = "Run complete flow →"; }
 }
@@ -472,7 +472,7 @@ async function loadWorkflows() {
 
 function renderWorkflows() {
   const root = $("#workflowList");
-  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">Nenhum workflow executado.</div>`;
+  if (!state.workflows.length) return root.innerHTML = `<div class="empty-state">No workflows have run yet.</div>`;
   root.innerHTML = state.workflows.map((workflow) => `
     <article class="workflow-card"><strong>#${workflow.id}</strong><div><h4>${escapeHtml(workflow.request.volume?.name || "LUN")}</h4><p>${workflow.dry_run ? "DRY-RUN" : "LIVE"} · ${escapeHtml(workflow.current_step || "Completed")}</p></div><div class="step-mini">${workflow.steps.map((step) => `<i class="${step.status}" title="${escapeHtml(step.name)}"></i>`).join("")}</div><div>${statusBadge(workflow.status)} <button class="button compact ghost workflow-open" data-id="${workflow.id}">Detailss</button></div></article>`).join("");
 }

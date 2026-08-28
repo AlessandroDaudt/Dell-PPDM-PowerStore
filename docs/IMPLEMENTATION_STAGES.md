@@ -20,7 +20,7 @@ Para volumes block, a execution segue esta ordem:
 3. present a LUN aos hosts (mappings PowerStore ou masking view PowerMax);
 4. create/activate Brocade zones when enabled;
 5. create ou reutilizar a rotina PPDM com Data Domain, interface, storage unit, schedule e retention;
-6. confirmar o recurso e registrar IDs no workflow.
+6. confirm the resource and record IDs in the workflow.
 
 O PowerMax usa Storage Group + masking view. O Port Group precisa existir no array e pode ser
 provided in PowerMax inventory or in the request. Missing hosts can be created by the
