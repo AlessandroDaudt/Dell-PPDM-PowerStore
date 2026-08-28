@@ -336,7 +336,7 @@ class PPDMClient:
                     "/api/v2/assets",
                     None,
                     f"block resource {name} did not appear in inventory within {timeout}s; "
-                    "execute a descoberta do storage no PPDM",
+                    "run storage discovery in PPDM",
                 )
             time.sleep(interval)
 

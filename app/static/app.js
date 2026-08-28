@@ -123,7 +123,7 @@ function renderInventory() {
   }
   root.innerHTML = filtered.map((item) => `
     <article class="equipment-card">
-      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "Sem endpoint de rede")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
+      <div class="equipment-card-head"><div><span class="type-badge ${item.type}">${item.type}</span><h4>${escapeHtml(item.name)}</h4><p>${escapeHtml(item.management_address || "No network endpoint")}${item.api_port ? `:${item.api_port}` : ""}</p></div><span title="TLS">${item.verify_ssl ? "🔒" : "⚠"}</span></div>
       <div class="wwn-list">${item.wwns.length ? item.wwns.slice(0, 5).map((wwn) => `<div class="wwn-row"><span>${escapeHtml(wwn.value)}</span><span>${escapeHtml(wwn.fabric)} · ${escapeHtml(wwn.role)}</span></div>`).join("") : `<span class="muted">No WWNs registered</span>`}${item.wwns.length > 5 ? `<small>+${item.wwns.length - 5} WWNs</small>` : ""}</div>
       <div class="card-actions"><button data-action="test" data-id="${item.id}">Test</button><button data-action="edit" data-id="${item.id}">Edit</button><button class="danger" data-action="delete" data-id="${item.id}">Delete</button></div>
     </article>`).join("");
