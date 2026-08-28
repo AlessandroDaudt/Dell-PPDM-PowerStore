@@ -1,3 +1,3 @@
-"""SANFlow Dell automation application."""
+"""San Flow automation application."""
 
 __version__ = "1.0.0"

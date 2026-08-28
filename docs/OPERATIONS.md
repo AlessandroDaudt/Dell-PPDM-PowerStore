@@ -36,7 +36,7 @@ Register one principal switch per fabric. Provide the FID, active cfg and FOS ge
 
 ### PPDM
 
-Register the endpoint on port 8443. **Fetch Data Domains and policies** reads options at change time; SANFlow does not maintain a parallel catalog.
+Register the endpoint on port 8443. **Fetch Data Domains and policies** reads options at change time; San Flow does not maintain a parallel catalog.
 
 ## 4. First execution
 

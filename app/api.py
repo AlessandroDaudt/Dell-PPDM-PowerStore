@@ -34,7 +34,7 @@ def require_auth(request: Request) -> str:
     username = request.session.get("username")
     if not username:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="autenticação necessária"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="authentication required"
         )
     return str(username)
 
@@ -94,7 +94,7 @@ def login(request: Request, payload: dict[str, str]):
     username_ok = secrets.compare_digest(payload.get("username", ""), settings.admin_username)
     password_ok = secrets.compare_digest(payload.get("password", ""), settings.admin_password)
     if not (username_ok and password_ok):
-        raise HTTPException(status_code=401, detail="usuário ou senha inválidos")
+        raise HTTPException(status_code=401, detail="invalid username or password")
     request.session.clear()
     request.session["username"] = settings.admin_username
     return {"authenticated": True, "username": settings.admin_username}
@@ -171,7 +171,7 @@ def add_equipment(payload: EquipmentCreate, user: AuthUser, db: DbSession):
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="nome ou WWN já cadastrado") from exc
+        raise HTTPException(status_code=409, detail="name or WWN is already registered") from exc
     db.refresh(equipment)
     return equipment_read(equipment)
 
@@ -182,7 +182,7 @@ def update_equipment(equipment_id: int, payload: EquipmentUpdate, user: AuthUser
         select(Equipment).where(Equipment.id == equipment_id).options(selectinload(Equipment.wwns))
     )
     if not equipment:
-        raise HTTPException(status_code=404, detail="equipamento não encontrado")
+        raise HTTPException(status_code=404, detail="equipment not found")
     equipment.name = payload.name.strip()
     equipment.type = payload.type
     equipment.management_address = (payload.management_address or "").strip() or None
@@ -209,7 +209,7 @@ def update_equipment(equipment_id: int, payload: EquipmentUpdate, user: AuthUser
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise HTTPException(status_code=409, detail="nome ou WWN já cadastrado") from exc
+        raise HTTPException(status_code=409, detail="name or WWN is already registered") from exc
     db.refresh(equipment)
     return equipment_read(equipment)
 
@@ -218,7 +218,7 @@ def update_equipment(equipment_id: int, payload: EquipmentUpdate, user: AuthUser
 def delete_equipment(equipment_id: int, user: AuthUser, db: DbSession):
     equipment = db.get(Equipment, equipment_id)
     if not equipment:
-        raise HTTPException(status_code=404, detail="equipamento não encontrado")
+        raise HTTPException(status_code=404, detail="equipment not found")
     db.delete(equipment)
     db.add(
         AuditEvent(
@@ -237,7 +237,7 @@ def _get_equipment(db: Session, equipment_id: int) -> Equipment:
         select(Equipment).where(Equipment.id == equipment_id).options(selectinload(Equipment.wwns))
     )
     if not equipment:
-        raise HTTPException(status_code=404, detail="equipamento não encontrado")
+        raise HTTPException(status_code=404, detail="equipment not found")
     return equipment
 
 
@@ -281,7 +281,9 @@ def test_equipment(equipment_id: int, _: AuthUser, db: DbSession):
         return {
             "ok": True,
             "system": "Brocade",
-            "message": "a autenticação e o zoning são validados pelo playbook no dry-run/live",
+            "message": (
+                "authentication and zoning are validated by the playbook in dry-run/live mode"
+            ),
         }
     return {"ok": True, "system": "Host", "wwns": len(equipment.wwns)}
 
@@ -299,7 +301,7 @@ def powerstore_options(equipment_id: int, _: AuthUser, db: DbSession):
         ) as client:
             return client.get_nas_options()
     if equipment.type != "POWERSTORE":
-        raise HTTPException(status_code=400, detail="equipamento não é PowerStore")
+        raise HTTPException(status_code=400, detail="equipment is not a PowerStore system")
     with PowerStoreClient(
         equipment.management_address or "",
         equipment.username or "",
@@ -314,11 +316,11 @@ def powerstore_options(equipment_id: int, _: AuthUser, db: DbSession):
 def powermax_options(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     if equipment.type != "POWERMAX":
-        raise HTTPException(status_code=400, detail="equipamento não é PowerMax")
+        raise HTTPException(status_code=400, detail="equipment is not a PowerMax system")
     settings = equipment_settings(equipment)
     symmetrix_id = settings.get("symmetrix_id")
     if not symmetrix_id:
-        raise HTTPException(status_code=400, detail="symmetrix_id não configurado no PowerMax")
+        raise HTTPException(status_code=400, detail="symmetrix_id is not configured in PowerMax")
     with PowerMaxClient(
         equipment.management_address or "",
         equipment.username or "",
@@ -334,7 +336,7 @@ def powermax_options(equipment_id: int, _: AuthUser, db: DbSession):
 def ppdm_options(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     if equipment.type != "PPDM":
-        raise HTTPException(status_code=400, detail="equipamento não é PPDM")
+        raise HTTPException(status_code=400, detail="equipment is not a PPDM system")
     with PPDMClient(
         equipment.management_address or "",
         equipment.username or "",
@@ -349,7 +351,7 @@ def ppdm_options(equipment_id: int, _: AuthUser, db: DbSession):
 def ppdm_nas_options(equipment_id: int, _: AuthUser, db: DbSession):
     equipment = _get_equipment(db, equipment_id)
     if equipment.type != "PPDM":
-        raise HTTPException(status_code=400, detail="equipamento não é PPDM")
+        raise HTTPException(status_code=400, detail="equipment is not a PPDM system")
     with PPDMClient(
         equipment.management_address or "",
         equipment.username or "",
@@ -393,7 +395,7 @@ def get_workflow(workflow_id: int, _: AuthUser, db: DbSession):
         select(Workflow).where(Workflow.id == workflow_id).options(selectinload(Workflow.steps))
     )
     if not workflow:
-        raise HTTPException(status_code=404, detail="workflow não encontrado")
+        raise HTTPException(status_code=404, detail="workflow not found")
     return workflow_read(workflow)
 
 
